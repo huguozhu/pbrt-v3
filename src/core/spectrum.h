@@ -45,9 +45,10 @@
 namespace pbrt {
 
 // Spectrum Utility Declarations
-static const int sampledLambdaStart = 400;
-static const int sampledLambdaEnd = 700;
-static const int nSpectralSamples = 60;
+// 以下三个参数表示第一个采样的波长范围为【400,405】， 第二个采样波长范围为【405，410】......第60个采样波长范围为【695，700】,详见FromSampled()函数
+static const int sampledLambdaStart = 400;		// 人眼是可见光的最小波长（纳米）
+static const int sampledLambdaEnd = 700;		// 人眼是可见光的最大波长（纳米）
+static const int nSpectralSamples = 60;			// 默认用的光谱采样数
 extern bool SpectrumSamplesSorted(const Float *lambda, const Float *vals,
                                   int n);
 extern void SortSpectrumSamples(Float *lambda, Float *vals, int n);
@@ -73,7 +74,7 @@ extern void BlackbodyNormalized(const Float *lambda, int n, Float T,
                                 Float *vals);
 
 // Spectral Data Declarations
-static const int nCIESamples = 471;
+static const int nCIESamples = 471;		// 从360到380nn,共471个采样点
 extern const Float CIE_X[nCIESamples];
 extern const Float CIE_Y[nCIESamples];
 extern const Float CIE_Z[nCIESamples];
@@ -286,12 +287,16 @@ class CoefficientSpectrum {
     Float c[nSpectrumSamples];
 };
 
+// 波长光谱
 class SampledSpectrum : public CoefficientSpectrum<nSpectralSamples> {
   public:
     // SampledSpectrum Public Methods
     SampledSpectrum(Float v = 0.f) : CoefficientSpectrum(v) {}
     SampledSpectrum(const CoefficientSpectrum<nSpectralSamples> &v)
         : CoefficientSpectrum<nSpectralSamples>(v) {}
+	
+	// SPD(spectrum power distribution)读入,lambda(波长),v(功率),n(采样数)
+	// 函数具体说明，参见page319
     static SampledSpectrum FromSampled(const Float *lambda, const Float *v,
                                        int n) {
         // Sort samples if unordered, use sorted for returned spectrum
@@ -505,10 +510,6 @@ inline SampledSpectrum Lerp(Float t, const SampledSpectrum &s1,
                             const SampledSpectrum &s2) {
     return (1 - t) * s1 + t * s2;
 }
-
-void ResampleLinearSpectrum(const Float *lambdaIn, const Float *vIn, int nIn,
-                            Float lambdaMin, Float lambdaMax, int nOut,
-                            Float *vOut);
 
 }  // namespace pbrt
 

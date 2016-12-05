@@ -70,9 +70,9 @@ class Camera {
 };
 
 struct CameraSample {
-    Point2f pFilm;
-    Point2f pLens;
-    Float time;
+    Point2f pFilm;		// 射线发出的Film坐标
+    Point2f pLens;		// 射线经过的透镜坐标
+    Float time;			// 射线发出的时间
 };
 
 inline std::ostream &operator<<(std::ostream &os, const CameraSample &cs) {
