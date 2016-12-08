@@ -104,6 +104,8 @@ class Film {
     }
 };
 
+// Film的一小块用于保存像素值的内存区域，对于一个渲染循环是私有的（Private）,不会被其他
+// 渲染线程修改，可以在本循环中放心使用，在本循环渲染完成后，同步更新到对应的Film中。
 class FilmTile {
   public:
     // FilmTile Public Methods

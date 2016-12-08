@@ -233,6 +233,7 @@ void SamplerIntegrator::Render(const Scene &scene) {
     Bounds2i sampleBounds = camera->film->GetSampleBounds();
     Vector2i sampleExtent = sampleBounds.Diagonal();
     const int tileSize = 16;
+	// 将渲染区域分为16*16的多个小区域，这样可以使用多线程独立完成运算
     Point2i nTiles((sampleExtent.x + tileSize - 1) / tileSize,
                    (sampleExtent.y + tileSize - 1) / tileSize);
     ProgressReporter reporter(nTiles.x * nTiles.y, "Rendering");
@@ -248,6 +249,7 @@ void SamplerIntegrator::Render(const Scene &scene) {
             std::unique_ptr<Sampler> tileSampler = sampler->Clone(seed);
 
             // Compute sample bounds for tile
+			// 分成16*16的小块
             int x0 = sampleBounds.pMin.x + tile.x * tileSize;
             int x1 = std::min(x0 + tileSize, sampleBounds.pMax.x);
             int y0 = sampleBounds.pMin.y + tile.y * tileSize;
@@ -261,6 +263,7 @@ void SamplerIntegrator::Render(const Scene &scene) {
 
             // Loop over pixels in tile to render them
             for (Point2i pixel : tileBounds) {
+				// 循环每个像素点
                 {
                     ProfilePhase pp(Prof::StartPixel);
                     tileSampler->StartPixel(pixel);
@@ -273,8 +276,9 @@ void SamplerIntegrator::Render(const Scene &scene) {
                 if (!InsideExclusive(pixel, pixelBounds))
                     continue;
 
+				// 循环像素中的每个采样点
                 do {
-                    // Initialize _CameraSample_ for current sample
+                    // Initialize _CameraSample_ for current sample					
                     CameraSample cameraSample =
                         tileSampler->GetCameraSample(pixel);
 

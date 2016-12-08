@@ -69,6 +69,7 @@ class Camera {
     const Medium *medium;
 };
 
+// 保存发出光线的Film上的位置，同时保存发射时间和透镜位置
 struct CameraSample {
     Point2f pFilm;		// 射线发出的Film坐标
     Point2f pLens;		// 射线经过的透镜坐标
