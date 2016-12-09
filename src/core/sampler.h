@@ -52,18 +52,18 @@ class Sampler {
     // Sampler Interface
     virtual ~Sampler();
     Sampler(int64_t samplesPerPixel);
-    virtual void StartPixel(const Point2i &p);
-    virtual Float Get1D() = 0;
-    virtual Point2f Get2D() = 0;
-    CameraSample GetCameraSample(const Point2i &pRaster);
+    virtual void StartPixel(const Point2i &p);				// 开始采样时调用
+    virtual Float Get1D() = 0;								// 返回下一个一维采样点的采样位置
+    virtual Point2f Get2D() = 0;							// 返回下一个二维采样点的采样位置
+    CameraSample GetCameraSample(const Point2i &pRaster);	// 
     void Request1DArray(int n);
     void Request2DArray(int n);
     virtual int RoundCount(int n) const { return n; }
     const Float *Get1DArray(int n);
     const Point2f *Get2DArray(int n);
-    virtual bool StartNextSample();
+    virtual bool StartNextSample();							// 当前像素是否还有下个采样点
     virtual std::unique_ptr<Sampler> Clone(int seed) = 0;
-    virtual bool SetSampleNumber(int64_t sampleNum);
+    virtual bool SetSampleNumber(int64_t sampleNum);		// 设置当前采样索引，因为有些算法不需要所有采样点，所以调用该函数跳过某些采样点
     std::string StateString() const {
       return StringPrintf("(%d,%d), sample %" PRId64, currentPixel.x,
                           currentPixel.y, currentPixelSampleIndex);
@@ -71,12 +71,12 @@ class Sampler {
     int64_t CurrentSampleNumber() const { return currentPixelSampleIndex; }
 
     // Sampler Public Data
-    const int64_t samplesPerPixel;
+    const int64_t samplesPerPixel;		// 每个像素的采样个数(该值在pbrt资源文件中的sampler字段指定）
 
   protected:
     // Sampler Protected Data
-    Point2i currentPixel;				// 当前采样的像素点位置
-    int64_t currentPixelSampleIndex;	// 当前采样的像素点的采样索引号（每个像素点都有固定个数的采样个数，当前值为512）
+    Point2i currentPixel;				// 当前被2采样像素点的位置
+    int64_t currentPixelSampleIndex;	// 当前被采样像素点的采样索引号
     std::vector<int> samples1DArraySizes, samples2DArraySizes;
     std::vector<std::vector<Float>> sampleArray1D;
     std::vector<std::vector<Point2f>> sampleArray2D;
