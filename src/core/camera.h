@@ -63,10 +63,10 @@ class Camera {
                                VisibilityTester *vis) const;
 
     // Camera Public Data
-    AnimatedTransform CameraToWorld;
-    const Float shutterOpen, shutterClose;
-    Film *film;
-    const Medium *medium;
+    AnimatedTransform CameraToWorld;			// 相机的运动轨迹
+    const Float shutterOpen, shutterClose;		// 快门打开时间和关闭时间
+    Film *film;									// 底片
+    const Medium *medium;						// 媒介
 };
 
 // 保存发出光线的Film上的位置，同时保存发射时间和透镜位置
@@ -110,6 +110,15 @@ class ProjectiveCamera : public Camera {
 
   protected:
     // ProjectiveCamera Protected Data
+	// pbrt系统使用左手系，和OpenGL一样
+	// 几个空间的定义：物体空间(Object Space),世界空间(World Space),相机空间(Camera Space),
+	//		屏幕空间(Screen Space),标准化设备空间(Normalized device coordinate--NDC),光栅空间(Raster Space)
+	// 物体空间：几何体被定义的空间
+	// 世界空间：。。。
+	// 相机空间：相机位置为（0,0,0）点的，相机的视线方向为z轴，相机向上方向为y轴
+	// 屏幕空间：定义在Film平面的空间，xy取值范围：[-1,1]或[-1*宽高比, 宽高比],z轴取值为[0,1],y轴方向为从下到上增大
+	// NDC空间：x,y,z都在范围[0,1]之间的空间，左上前是（0,0,0), 右下后是（1,1,1）
+	// 光栅空间：和NDC一样，只是x和y的取值范围为[0,resolution.x]和[0,resolution.y]，z轴取值为[0,1]
     Transform CameraToScreen, RasterToCamera;
     Transform ScreenToRaster, RasterToScreen;
     Float lensRadius, focalDistance;

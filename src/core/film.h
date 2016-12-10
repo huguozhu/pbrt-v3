@@ -87,7 +87,7 @@ class Film {
         AtomicFloat splatXYZ[3];
         Float pad;
     };
-    std::unique_ptr<Pixel[]> pixels;
+    std::unique_ptr<Pixel[]> pixels;						// Film上所有像素点
     static PBRT_CONSTEXPR int filterTableWidth = 16;
     Float filterTable[filterTableWidth * filterTableWidth];
     std::mutex mutex;
