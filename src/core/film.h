@@ -72,22 +72,22 @@ class Film {
     void Clear();
 
     // Film Public Data
-    const Point2i fullResolution;
+    const Point2i fullResolution;		// 全分辨率，在pbrt场景文件中，由xresolution和yresolution定义
     const Float diagonal;
     std::unique_ptr<Filter> filter;
     const std::string filename;
-    Bounds2i croppedPixelBounds;
+    Bounds2i croppedPixelBounds;		// 真正渲染的分辨率，是fullResolution的子集，在pbrt场景文件中，由cropwindow定义
 
   private:
     // Film Private Data
     struct Pixel {
         Pixel() { xyz[0] = xyz[1] = xyz[2] = filterWeightSum = 0; }
-        Float xyz[3];
-        Float filterWeightSum;
+        Float xyz[3];				// xyz颜色值（相对于RGB，xyz颜色值是显示器独立(display independent)的颜色值）
+        Float filterWeightSum;		// 采样值对像素的权重和
         AtomicFloat splatXYZ[3];
-        Float pad;
+        Float pad;					// 无意义，只为凑足32字节
     };
-    std::unique_ptr<Pixel[]> pixels;						// Film上所有像素点
+    std::unique_ptr<Pixel[]> pixels;						// Film上所有像素点，和参数croppedPixelBounds相关，与fullResolution无关
     static PBRT_CONSTEXPR int filterTableWidth = 16;
     Float filterTable[filterTableWidth * filterTableWidth];
     std::mutex mutex;

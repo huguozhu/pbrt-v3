@@ -96,6 +96,8 @@ Float PerspectiveCamera::GenerateRayDifferential(const CameraSample &sample,
                                                  RayDifferential *ray) const {
     ProfilePhase prof(Prof::GenerateCameraRay);
     // Compute raster and camera sample positions
+	// 发射的射线起点为相机坐标的（0,0,0)远点，方向为近平面(near plane)上的采样像素点位置
+	// 近平面的距离固定为0.01，远平面的距离固定为1000
     Point3f pFilm = Point3f(sample.pFilm.x, sample.pFilm.y, 0);
     Point3f pCamera = RasterToCamera(pFilm);
     Vector3f dir = Normalize(Vector3f(pCamera.x, pCamera.y, pCamera.z));

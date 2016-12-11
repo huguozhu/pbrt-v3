@@ -64,7 +64,7 @@ class PerspectiveCamera : public ProjectiveCamera {
 
   private:
     // PerspectiveCamera Private Data
-    Vector3f dxCamera, dyCamera;
+    Vector3f dxCamera, dyCamera;		// 在x轴和y轴方向相差一个像素的位置，对应在相机空间的距离
     Float A;
 };
 

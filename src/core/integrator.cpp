@@ -286,6 +286,7 @@ void SamplerIntegrator::Render(const Scene &scene) {
                     RayDifferential ray;
                     Float rayWeight =
                         camera->GenerateRayDifferential(cameraSample, &ray);
+					// 调用ScaleDifferentials()，表示用于同一像素内的不同采样
                     ray.ScaleDifferentials(
                         1 / std::sqrt((Float)tileSampler->samplesPerPixel));
                     ++nCameraRays;
