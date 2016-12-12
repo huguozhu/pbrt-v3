@@ -866,6 +866,7 @@ class Bounds2iIterator : public std::forward_iterator_tag {
 };
 
 // Ray Declarations
+// 射线
 class Ray {
   public:
     // Ray Public Methods
@@ -882,13 +883,15 @@ class Ray {
     }
 
     // Ray Public Data
-    Point3f o;
-    Vector3f d;
-    mutable Float tMax;
-    Float time;
-    const Medium *medium;
+    Point3f o;				// 射线的发射点(起点)
+    Vector3f d;				// 射线的发射方向
+    mutable Float tMax;		// 射线的最大传播时间
+    Float time;				// 射线的从发射开始到当前的时间，按照公式r(t) = o + td，假定射线发射速度大小是1，方向时d(长度=1)
+    const Medium *medium;	// 射线传播的介质，比如烟雾、牛奶等
 };
 
+// 带微分信息的射线，相对于射线，多了两条发射位置在x轴方向和y轴方向加1的射线
+// 作用：1.纹理抗锯齿		2.可以计算投影到image的一小块场景(scene),用于输出高质量的结果
 class RayDifferential : public Ray {
   public:
     // RayDifferential Public Methods
@@ -920,9 +923,9 @@ class RayDifferential : public Ray {
     }
 
     // RayDifferential Public Data
-    bool hasDifferentials;
-    Point3f rxOrigin, ryOrigin;
-    Vector3f rxDirection, ryDirection;
+    bool hasDifferentials;				// 是否带微分信息 
+    Point3f rxOrigin, ryOrigin;			// 沿x轴和y轴偏移的两条射线的发射起点
+    Vector3f rxDirection, ryDirection;	// 沿x轴和y轴偏移的两条射线的发射方向
 };
 
 // Geometry Inline Functions

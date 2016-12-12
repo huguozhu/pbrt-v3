@@ -54,12 +54,12 @@ class Shape {
     Shape(const Transform *ObjectToWorld, const Transform *WorldToObject,
           bool reverseOrientation);
     virtual ~Shape();
-    virtual Bounds3f ObjectBound() const = 0;
-    virtual Bounds3f WorldBound() const;
-    virtual bool Intersect(const Ray &ray, Float *tHit,
+    virtual Bounds3f ObjectBound() const = 0;						// 在物体坐标系的包围盒
+    virtual Bounds3f WorldBound() const;							// 在世界坐标系的包围盒
+    virtual bool Intersect(const Ray &ray, Float *tHit,				// 与射线ray是否相交，及相交的信息isect
                            SurfaceInteraction *isect,
                            bool testAlphaTexture = true) const = 0;
-    virtual bool IntersectP(const Ray &ray,
+    virtual bool IntersectP(const Ray &ray,							// 只单纯判断是否相交
                             bool testAlphaTexture = true) const {
         return Intersect(ray, nullptr, nullptr, testAlphaTexture);
     }

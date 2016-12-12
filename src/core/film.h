@@ -73,7 +73,7 @@ class Film {
 
     // Film Public Data
     const Point2i fullResolution;		// 全分辨率，在pbrt场景文件中，由xresolution和yresolution定义
-    const Float diagonal;
+    const Float diagonal;				// 对角线？？？
     std::unique_ptr<Filter> filter;
     const std::string filename;
     Bounds2i croppedPixelBounds;		// 真正渲染的分辨率，是fullResolution的子集，在pbrt场景文件中，由cropwindow定义

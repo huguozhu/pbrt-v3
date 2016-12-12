@@ -47,22 +47,25 @@
 namespace pbrt {
 
 // Primitive Declarations
+// Shape类用于表示物体的形状、mesh等信息
+// Primitive类包括了物体的mesh、材质、光线等信息（自身是发光体）
 class Primitive {
   public:
     // Primitive Interface
     virtual ~Primitive();
-    virtual Bounds3f WorldBound() const = 0;
-    virtual bool Intersect(const Ray &r, SurfaceInteraction *) const = 0;
-    virtual bool IntersectP(const Ray &r) const = 0;
+    virtual Bounds3f WorldBound() const = 0;								// 在世界坐标系的包围盒
+    virtual bool Intersect(const Ray &r, SurfaceInteraction *) const = 0;	// 与射线ray是否相交，且保存相交信息
+    virtual bool IntersectP(const Ray &r) const = 0;						// 只简单判断是否与ray相交
     virtual const AreaLight *GetAreaLight() const = 0;
     virtual const Material *GetMaterial() const = 0;
-    virtual void ComputeScatteringFunctions(SurfaceInteraction *isect,
+    virtual void ComputeScatteringFunctions(SurfaceInteraction *isect,		// 计算散射的函数
                                             MemoryArena &arena,
                                             TransportMode mode,
                                             bool allowMultipleLobes) const = 0;
 };
 
 // GeometricPrimitive Declarations
+// 用来渲染的形体
 class GeometricPrimitive : public Primitive {
   public:
     // GeometricPrimitive Public Methods
@@ -120,6 +123,7 @@ class TransformedPrimitive : public Primitive {
 };
 
 // Aggregate Declarations
+// 一个把多个物体归为一组的接口
 class Aggregate : public Primitive {
   public:
     // Aggregate Public Methods

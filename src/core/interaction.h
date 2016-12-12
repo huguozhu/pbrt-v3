@@ -92,12 +92,12 @@ struct Interaction {
     }
 
     // Interaction Public Data
-    Point3f p;
-    Float time;
-    Vector3f pError;
-    Vector3f wo;
-    Normal3f n;
-    MediumInterface mediumInterface;
+    Point3f p;			// 相交点坐标				
+    Float time;			// 相交时的时间
+    Vector3f pError;	// 
+    Vector3f wo;		// 相交后射线反射的反射方向
+    Normal3f n;			// 相交点的法线
+    MediumInterface mediumInterface;	// 散射介质
 };
 
 class MediumInteraction : public Interaction {

@@ -74,8 +74,8 @@ class Scene {
 
   private:
     // Scene Private Data
-    std::shared_ptr<Primitive> aggregate;
-    Bounds3f worldBound;
+    std::shared_ptr<Primitive> aggregate;			// Aggregate类，实质是bvh或kdtree的包含一堆primitive的集合
+    Bounds3f worldBound;							// scene在世界坐标系的包围盒
 };
 
 }  // namespace pbrt
