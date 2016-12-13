@@ -53,7 +53,7 @@ struct BVHPrimitiveInfo {
         : primitiveNumber(primitiveNumber),
           bounds(bounds),
           centroid(.5f * bounds.pMin + .5f * bounds.pMax) {}
-    size_t primitiveNumber;		// 在BVH中的编号
+    size_t primitiveNumber;		// 在BVHAccel::primitives中的编号
     Bounds3f bounds;			// primitive对应的shape的包围盒
     Point3f centroid;			// 中心点
 };
@@ -78,8 +78,8 @@ struct BVHBuildNode {
         ++interiorNodes;
     }
     Bounds3f bounds;							// 本节点的包围盒
-    BVHBuildNode *children[2];					// 
-    int splitAxis, firstPrimOffset, nPrimitives;// 
+    BVHBuildNode *children[2];					// 两个子节点
+    int splitAxis, firstPrimOffset, nPrimitives;// 本节点包含的primitive，从BVHAccel::primitives队列中第firstPrimOffset开始的nPrimitives个
 };
 
 struct MortonPrimitive {
@@ -245,6 +245,7 @@ BVHBuildNode *BVHAccel::recursiveBuild(
     int nPrimitives = end - start;
     if (nPrimitives == 1) {
         // Create leaf _BVHBuildNode_
+		// 如果只有一个，则创建一个叶子节点
         int firstPrimOffset = orderedPrims.size();
         for (int i = start; i < end; ++i) {
             int primNum = primitiveInfo[i].primitiveNumber;
