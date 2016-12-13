@@ -53,9 +53,9 @@ struct BVHPrimitiveInfo {
         : primitiveNumber(primitiveNumber),
           bounds(bounds),
           centroid(.5f * bounds.pMin + .5f * bounds.pMax) {}
-    size_t primitiveNumber;
-    Bounds3f bounds;
-    Point3f centroid;
+    size_t primitiveNumber;		// 在BVH中的编号
+    Bounds3f bounds;			// primitive对应的shape的包围盒
+    Point3f centroid;			// 中心点
 };
 
 struct BVHBuildNode {
@@ -77,9 +77,9 @@ struct BVHBuildNode {
         nPrimitives = 0;
         ++interiorNodes;
     }
-    Bounds3f bounds;
-    BVHBuildNode *children[2];
-    int splitAxis, firstPrimOffset, nPrimitives;
+    Bounds3f bounds;							// 本节点的包围盒
+    BVHBuildNode *children[2];					// 
+    int splitAxis, firstPrimOffset, nPrimitives;// 
 };
 
 struct MortonPrimitive {
@@ -195,6 +195,7 @@ BVHAccel::BVHAccel(const std::vector<std::shared_ptr<Primitive>> &p,
         primitiveInfo[i] = {i, primitives[i]->WorldBound()};
 
     // Build BVH tree for primitives using _primitiveInfo_
+	// 创建BVH树
     MemoryArena arena(1024 * 1024);
     int totalNodes = 0;
     std::vector<std::shared_ptr<Primitive>> orderedPrims;

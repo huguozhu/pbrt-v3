@@ -60,16 +60,21 @@ struct Interaction {
           wo(Normalize(wo)),
           n(n),
           mediumInterface(mediumInterface) {}
+	// 如果有法线信息（法线不为0），则表示是在面上的相交点
     bool IsSurfaceInteraction() const { return n != Normal3f(); }
+
+	// 产生新的方向为d的光线
     Ray SpawnRay(const Vector3f &d) const {
         Point3f o = OffsetRayOrigin(p, pError, n, d);
         return Ray(o, d, Infinity, time, GetMedium(d));
     }
+	// 产生新的射向p2点的光线
     Ray SpawnRayTo(const Point3f &p2) const {
         Point3f origin = OffsetRayOrigin(p, pError, n, p2 - p);
         Vector3f d = p2 - p;
         return Ray(origin, d, 1 - ShadowEpsilon, time, GetMedium(d));
     }
+	// 产生新的射向相交点it的光线
     Ray SpawnRayTo(const Interaction &it) const {
         Point3f origin = OffsetRayOrigin(p, pError, n, it.p - p);
         Point3f target = OffsetRayOrigin(it.p, it.pError, it.n, origin - it.p);
@@ -93,10 +98,10 @@ struct Interaction {
 
     // Interaction Public Data
     Point3f p;			// 相交点坐标				
-    Float time;			// 相交时的时间
+    Float time;			// 相交时光线的时间
     Vector3f pError;	// 
     Vector3f wo;		// 相交后射线反射的反射方向
-    Normal3f n;			// 相交点的法线
+    Normal3f n;			// 相交点的法线，指向物体的外部(outside)
     MediumInterface mediumInterface;	// 散射介质
 };
 
@@ -114,6 +119,7 @@ class MediumInteraction : public Interaction {
 };
 
 // SurfaceInteraction Declarations
+// 平面上的相交点
 class SurfaceInteraction : public Interaction {
   public:
     // SurfaceInteraction Public Methods
@@ -134,10 +140,10 @@ class SurfaceInteraction : public Interaction {
     Spectrum Le(const Vector3f &w) const;
 
     // SurfaceInteraction Public Data
-    Point2f uv;
-    Vector3f dpdu, dpdv;
-    Normal3f dndu, dndv;
-    const Shape *shape = nullptr;
+    Point2f uv;						// 相交点的uv坐标
+    Vector3f dpdu, dpdv;			// 在相交点的坐标的对u、v的微分
+    Normal3f dndu, dndv;			// 在相交点的法线的对u、v的微分
+    const Shape *shape = nullptr;	// 相交点对应的几何坐标
     struct {
         Normal3f n;
         Vector3f dpdu, dpdv;

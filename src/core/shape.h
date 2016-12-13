@@ -83,9 +83,9 @@ class Shape {
     virtual Float SolidAngle(const Point3f &p, int nSamples = 512) const;
 
     // Shape Public Data
-    const Transform *ObjectToWorld, *WorldToObject;
-    const bool reverseOrientation;
-    const bool transformSwapsHandedness;
+    const Transform *ObjectToWorld, *WorldToObject;	// 物体坐标系到世界坐标系、世界坐标系到物体坐标系的转换矩阵
+    const bool reverseOrientation;					// 法线方向是否翻转，用于指定shape的外部(outside),发光体只在法线方向发射光线
+    const bool transformSwapsHandedness;			// 默认使用左手坐标系，如果当前shape使用右手坐标系,则该值为true
 };
 
 }  // namespace pbrt

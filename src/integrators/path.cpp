@@ -101,6 +101,7 @@ Spectrum PathIntegrator::Li(const RayDifferential &r, const Scene &scene,
         }
 
         // Terminate path if ray escaped or _maxDepth_ was reached
+		// 如果没有相交点或光线反弹次数超过最大次数，则退出
         if (!foundIntersection || bounces >= maxDepth) break;
 
         // Compute scattering functions and skip over medium boundaries

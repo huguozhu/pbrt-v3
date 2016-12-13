@@ -55,6 +55,7 @@ struct LinearBVHNode;
 class BVHAccel : public Aggregate {
   public:
     // BVHAccel Public Types
+	// 创建BVH的四种算法
     enum class SplitMethod { SAH, HLBVH, Middle, EqualCounts };
 
     // BVHAccel Public Methods
@@ -88,9 +89,9 @@ class BVHAccel : public Aggregate {
     int flattenBVHTree(BVHBuildNode *node, int *offset);
 
     // BVHAccel Private Data
-    const int maxPrimsInNode;
+    const int maxPrimsInNode;							// 一个node节点中可以保存的最大primitive数量
     const SplitMethod splitMethod;
-    std::vector<std::shared_ptr<Primitive>> primitives;
+    std::vector<std::shared_ptr<Primitive>> primitives;	// BVH中的Primitive
     LinearBVHNode *nodes = nullptr;
 };
 
