@@ -264,6 +264,7 @@ BVHBuildNode *BVHAccel::recursiveBuild(
         int mid = (start + end) / 2;
         if (centroidBounds.pMax[dim] == centroidBounds.pMin[dim]) {
             // Create leaf _BVHBuildNode_
+			// 如果所有的primitive的中心都在同一个点，则把所有的primitive放在同一个叶子节点中
             int firstPrimOffset = orderedPrims.size();
             for (int i = start; i < end; ++i) {
                 int primNum = primitiveInfo[i].primitiveNumber;
@@ -276,6 +277,7 @@ BVHBuildNode *BVHAccel::recursiveBuild(
             switch (splitMethod) {
             case SplitMethod::Middle: {
                 // Partition primitives through node's midpoint
+				// 按照中心点最长的维度分两类
                 Float pmid =
                     (centroidBounds.pMin[dim] + centroidBounds.pMax[dim]) / 2;
                 BVHPrimitiveInfo *midPtr = std::partition(
@@ -292,6 +294,7 @@ BVHBuildNode *BVHAccel::recursiveBuild(
             }
             case SplitMethod::EqualCounts: {
                 // Partition primitives into equally-sized subsets
+				// 以最中间的中心点为届分两类
                 mid = (start + end) / 2;
                 std::nth_element(&primitiveInfo[start], &primitiveInfo[mid],
                                  &primitiveInfo[end - 1] + 1,

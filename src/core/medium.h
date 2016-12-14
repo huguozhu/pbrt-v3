@@ -99,6 +99,7 @@ class HenyeyGreenstein : public PhaseFunction {
 };
 
 // MediumInterface Declarations
+// 代表物体内部和外部的媒介，如果inside和outside都是nullptr,则表示真空
 struct MediumInterface {
     MediumInterface() : inside(nullptr), outside(nullptr) {}
     // MediumInterface Public Methods

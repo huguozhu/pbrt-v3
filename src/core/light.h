@@ -68,7 +68,9 @@ class Light {
     virtual Spectrum Sample_Li(const Interaction &ref, const Point2f &u,
                                Vector3f *wi, Float *pdf,
                                VisibilityTester *vis) const = 0;
-    virtual Spectrum Power() const = 0;
+    // 光源已发射的总能量(total emitted power)
+	virtual Spectrum Power() const = 0;
+	// 光源在使用前的预处理，大多数实现都是空值
     virtual void Preprocess(const Scene &scene) {}
     virtual Spectrum Le(const RayDifferential &r) const;
     virtual Float Pdf_Li(const Interaction &ref, const Vector3f &wi) const = 0;
@@ -79,15 +81,17 @@ class Light {
                         Float *pdfDir) const = 0;
 
     // Light Public Data
-    const int flags;
-    const int nSamples;
-    const MediumInterface mediumInterface;
-
+    const int flags;			// 光线类型
+    const int nSamples;			// 用于area light，用于技术软阴影
+    const MediumInterface mediumInterface;	// inside和outside的介质
   protected:
     // Light Protected Data
-    const Transform LightToWorld, WorldToLight;
+	// 光源坐标系到世界坐标系即及其反向的变换矩阵
+	// 光源坐标系:光源位置位于原点(0,0,0),方向为(0,0,1)
+    const Transform LightToWorld, WorldToLight;		
 };
 
+// 用于判断两点之间是否有遮挡
 class VisibilityTester {
   public:
     VisibilityTester() {}
@@ -96,8 +100,8 @@ class VisibilityTester {
         : p0(p0), p1(p1) {}
     const Interaction &P0() const { return p0; }
     const Interaction &P1() const { return p1; }
-    bool Unoccluded(const Scene &scene) const;
-    Spectrum Tr(const Scene &scene, Sampler &sampler) const;
+    bool Unoccluded(const Scene &scene) const;					// 在p0和p1之间是否有遮挡物
+    Spectrum Tr(const Scene &scene, Sampler &sampler) const;	// 从p0透过介质传播到p1透射比
 
   private:
     Interaction p0, p1;

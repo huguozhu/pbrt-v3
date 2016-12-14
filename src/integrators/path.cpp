@@ -90,6 +90,7 @@ Spectrum PathIntegrator::Li(const RayDifferential &r, const Scene &scene,
         // Possibly add emitted light at intersection
         if (bounces == 0 || specularBounce) {
             // Add emitted light at path vertex or from the environment
+			// 在第一次发射时，如果有交点则判断是否碰到发光体，否则把infiniteLights的光照影响加入
             if (foundIntersection) {
                 L += beta * isect.Le(-ray.d);
                 VLOG(2) << "Added Le -> L = " << L;

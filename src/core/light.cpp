@@ -67,6 +67,7 @@ Spectrum VisibilityTester::Tr(const Scene &scene, Sampler &sampler) const {
         SurfaceInteraction isect;
         bool hitSurface = scene.Intersect(ray, &isect);
         // Handle opaque surface along ray's path
+		// 中间如果碰到了不透明（有材质即表示不透明）的物体，则到p1的光照为0
         if (hitSurface && isect.primitive->GetMaterial() != nullptr)
             return Spectrum(0.0f);
 
