@@ -116,12 +116,13 @@ inline bool SameHemisphere(const Vector3f &w, const Normal3f &wp) {
 }
 
 // BSDF Declarations
+// 对于每个BxDF的类型，必须选择反射和投射的一种，并再是漫反射、光泽反射和完美反射的一种
 enum BxDFType {
-    BSDF_REFLECTION = 1 << 0,
-    BSDF_TRANSMISSION = 1 << 1,
-    BSDF_DIFFUSE = 1 << 2,
-    BSDF_GLOSSY = 1 << 3,
-    BSDF_SPECULAR = 1 << 4,
+    BSDF_REFLECTION = 1 << 0,			// 反射
+    BSDF_TRANSMISSION = 1 << 1,			// 透射
+    BSDF_DIFFUSE = 1 << 2,				// 漫反射，反射射向所有方向，如粗糙的黑板或无光涂料(matte paint)
+    BSDF_GLOSSY = 1 << 3,				// 光泽反射(glossy specular)，例如塑料
+    BSDF_SPECULAR = 1 << 4,				// 完美反射，例如镜子
     BSDF_ALL = BSDF_DIFFUSE | BSDF_GLOSSY | BSDF_SPECULAR | BSDF_REFLECTION |
                BSDF_TRANSMISSION,
 };
@@ -213,6 +214,8 @@ class BxDF {
     virtual ~BxDF() {}
     BxDF(BxDFType type) : type(type) {}
     bool MatchesFlags(BxDFType t) const { return (type & t) == type; }
+	// 返回出射、入射两个方向上的双向反射分布函数
+	// 不是所有的BxDF都可以求值，例如对于镜子等完美反射的材质，在某些方向上值为0
     virtual Spectrum f(const Vector3f &wo, const Vector3f &wi) const = 0;
     virtual Spectrum Sample_f(const Vector3f &wo, Vector3f *wi,
                               const Point2f &sample, Float *pdf,
@@ -376,6 +379,7 @@ class FresnelSpecular : public BxDF {
     const TransportMode mode;
 };
 
+// 最简单的反射模型，假定有一种完美的反射表面，能将射入的光线向所有方向等量的反射和散射
 class LambertianReflection : public BxDF {
   public:
     // LambertianReflection Public Methods
@@ -388,7 +392,7 @@ class LambertianReflection : public BxDF {
 
   private:
     // LambertianReflection Private Data
-    const Spectrum R;
+    const Spectrum R;	// 入射光线强度
 };
 
 class LambertianTransmission : public BxDF {
