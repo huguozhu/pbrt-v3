@@ -110,8 +110,8 @@ class VisibilityTester {
 class AreaLight : public Light {
   public:
     // AreaLight Interface
-    AreaLight(const Transform &LightToWorld, const MediumInterface &medium,
-              int nSamples);
+    AreaLight(const Transform &LightToWorld, const MediumInterface &medium, int nSamples);
+	// 光源在面上的交点intr处，在方向为w处的放射光(emitted radiance)
     virtual Spectrum L(const Interaction &intr, const Vector3f &w) const = 0;
 };
 

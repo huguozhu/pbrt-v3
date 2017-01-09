@@ -673,6 +673,8 @@ Spectrum BSDF::f(const Vector3f &woW, const Vector3f &wiW,
     ProfilePhase pp(Prof::BSDFEvaluation);
     Vector3f wi = WorldToLocal(wiW), wo = WorldToLocal(woW);
     if (wo.z == 0) return 0.;
+	// 入射光线、出射光线和法线在同一半球表示计算反射分布
+	// 不在同一半球，则计算透射分布
     bool reflect = Dot(wiW, ng) * Dot(woW, ng) > 0;
     Spectrum f(0.f);
     for (int i = 0; i < nBxDFs; ++i)

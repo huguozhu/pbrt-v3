@@ -137,7 +137,8 @@ class SurfaceInteraction : public Interaction {
         bool allowMultipleLobes = false,
         TransportMode mode = TransportMode::Radiance);
     void ComputeDifferentials(const RayDifferential &r) const;
-    Spectrum Le(const Vector3f &w) const;		// LightEmit的缩写，相交点的物体是发光体，在w方向上的光照
+	// LightEmit的缩写，相交点的物体是发光体，在w方向上的放射光(emitted radiance)
+	Spectrum Le(const Vector3f &w) const;		
 
     // SurfaceInteraction Public Data
     Point2f uv;						// 相交点的uv坐标

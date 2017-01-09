@@ -45,6 +45,7 @@
 namespace pbrt {
 
 // TransportMode Declarations
+// 光射线来自光源还是来自相机
 enum class TransportMode { Radiance, Importance };
 
 // Material Declarations

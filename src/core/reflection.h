@@ -151,6 +151,7 @@ struct FourierBSDFTable {
                              Float weights[4]) const;
 };
 
+// 代表一组BRDF(双向反射分布函数)和BTDF(双向透射分布函数)的组合
 class BSDF {
   public:
     // BSDF Public Methods
@@ -164,7 +165,7 @@ class BSDF {
         CHECK_LT(nBxDFs, MaxBxDFs);
         bxdfs[nBxDFs++] = b;
     }
-    int NumComponents(BxDFType flags = BSDF_ALL) const;
+    int NumComponents(BxDFType flags = BSDF_ALL) const;		// 拥有类型为flag的BXDF个数
     Vector3f WorldToLocal(const Vector3f &v) const {
         return Vector3f(Dot(v, ss), Dot(v, ts), Dot(v, ns));
     }
@@ -187,16 +188,18 @@ class BSDF {
     std::string ToString() const;
 
     // BSDF Public Data
-    const Float eta;
+    const Float eta;	// 对于不透明物体无用
 
   private:
     // BSDF Private Methods
     ~BSDF() {}
 
     // BSDF Private Data
-    const Normal3f ns, ng;
-    const Vector3f ss, ts;
-    int nBxDFs = 0;
+	// 后面的s代表shade space，也称为tangent space
+	// 后面的g代表geometry space，在书中即为world space
+    const Normal3f ns, ng;		// 切线空间中的法线和物体空间的法线
+    const Vector3f ss, ts;		// 切线空间中的s、t向量
+    int nBxDFs = 0;				// BxDF个数
     static PBRT_CONSTEXPR int MaxBxDFs = 8;
     BxDF *bxdfs[MaxBxDFs];
     friend class MixMaterial;
@@ -214,7 +217,7 @@ class BxDF {
     virtual ~BxDF() {}
     BxDF(BxDFType type) : type(type) {}
     bool MatchesFlags(BxDFType t) const { return (type & t) == type; }
-	// 返回出射、入射两个方向上的双向反射分布函数
+	// 返回出射、入射两个方向上的双向反射分布函数BRDF或双向投射分布函数BTDF
 	// 不是所有的BxDF都可以求值，例如对于镜子等完美反射的材质，在某些方向上值为0
     virtual Spectrum f(const Vector3f &wo, const Vector3f &wi) const = 0;
     virtual Spectrum Sample_f(const Vector3f &wo, Vector3f *wi,
@@ -222,6 +225,7 @@ class BxDF {
                               BxDFType *sampledType = nullptr) const;
     virtual Spectrum rho(const Vector3f &wo, int nSamples,
                          const Point2f *samples) const;
+	// 使用蒙特卡洛算法
     virtual Spectrum rho(int nSamples, const Point2f *samples1,
                          const Point2f *samples2) const;
     virtual Float Pdf(const Vector3f &wo, const Vector3f &wi) const;
