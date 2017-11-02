@@ -232,8 +232,7 @@ HairBSDF::HairBSDF(Float h, Float eta, const Spectrum &sigma_a, Float beta_m,
       eta(eta),
       sigma_a(sigma_a),
       beta_m(beta_m),
-      beta_n(beta_n),
-      alpha(alpha) {
+      beta_n(beta_n) {
     CHECK(h >= -1 && h <= 1);
     CHECK(beta_m >= 0 && beta_m <= 1);
     CHECK(beta_n >= 0 && beta_n <= 1);
@@ -254,7 +253,7 @@ HairBSDF::HairBSDF(Float h, Float eta, const Spectrum &sigma_a, Float beta_m,
     CHECK(!std::isnan(s));
 
     // Compute $\alpha$ terms for hair scales
-    sin2kAlpha[0] = std::sin(alpha);
+    sin2kAlpha[0] = std::sin(Radians(alpha));
     cos2kAlpha[0] = SafeSqrt(1 - Sqr(sin2kAlpha[0]));
     for (int i = 1; i < 3; ++i) {
         sin2kAlpha[i] = 2 * cos2kAlpha[i - 1] * sin2kAlpha[i - 1];
@@ -336,7 +335,6 @@ std::array<Float, pMax + 1> HairBSDF::ComputeApPdf(Float cosThetaO) const {
     Float etap = std::sqrt(eta * eta - Sqr(sinThetaO)) / cosThetaO;
     Float sinGammaT = h / etap;
     Float cosGammaT = SafeSqrt(1 - Sqr(sinGammaT));
-    Float gammaT = SafeASin(sinGammaT);
 
     // Compute the transmittance _T_ of a single path through the cylinder
     Spectrum T = Exp(-sigma_a * (2 * cosGammaT / cosThetaT));
@@ -398,7 +396,6 @@ Spectrum HairBSDF::Sample_f(const Vector3f &wo, Vector3f *wi, const Point2f &u2,
     // Compute $\gammat$ for refracted ray
     Float etap = std::sqrt(eta * eta - Sqr(sinThetaO)) / cosThetaO;
     Float sinGammaT = h / etap;
-    Float cosGammaT = SafeSqrt(1 - Sqr(sinGammaT));
     Float gammaT = SafeASin(sinGammaT);
     Float dphi;
     if (p < pMax)
@@ -456,14 +453,9 @@ Float HairBSDF::Pdf(const Vector3f &wo, const Vector3f &wi) const {
     Float cosThetaI = SafeSqrt(1 - Sqr(sinThetaI));
     Float phiI = std::atan2(wi.z, wi.y);
 
-    // Compute $\cos \thetat$ for refracted ray
-    Float sinThetaT = sinThetaO / eta;
-    Float cosThetaT = SafeSqrt(1 - Sqr(sinThetaT));
-
     // Compute $\gammat$ for refracted ray
     Float etap = std::sqrt(eta * eta - Sqr(sinThetaO)) / cosThetaO;
     Float sinGammaT = h / etap;
-    Float cosGammaT = SafeSqrt(1 - Sqr(sinGammaT));
     Float gammaT = SafeASin(sinGammaT);
 
     // Compute PDF for $A_p$ terms
@@ -504,8 +496,8 @@ Float HairBSDF::Pdf(const Vector3f &wo, const Vector3f &wi) const {
 
 std::string HairBSDF::ToString() const {
     return StringPrintf(
-        "[ Hair h: %f gammaO: %f eta: %f beta_m: %f beta_n: %f alpha: %f "
-        "v[0]: %f s: %f sigma_a: ", h, gammaO, eta, beta_m, beta_n, alpha,
+        "[ Hair h: %f gammaO: %f eta: %f beta_m: %f beta_n: %f "
+        "v[0]: %f s: %f sigma_a: ", h, gammaO, eta, beta_m, beta_n,
         v[0], s) +
         sigma_a.ToString() +
         std::string("  ]");

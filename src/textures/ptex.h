@@ -35,43 +35,36 @@
 #pragma once
 #endif
 
-#ifndef PBRT_SAMPLERS_SOBOL_H
-#define PBRT_SAMPLERS_SOBOL_H
+#ifndef PBRT_TEXTURES_PTEX_H
+#define PBRT_TEXTURES_PTEX_H
 
-// samplers/sobol.h*
-#include "sampler.h"
+// textures/ptex.h*
+#include "pbrt.h"
+#include "texture.h"
+
+#include <string>
 
 namespace pbrt {
 
-// SobolSampler Declarations
-class SobolSampler : public GlobalSampler {
+// PtexTexture Declarations
+template <typename T>
+class PtexTexture : public Texture<T> {
   public:
-    // SobolSampler Public Methods
-    std::unique_ptr<Sampler> Clone(int seed);
-    SobolSampler(int64_t samplesPerPixel, const Bounds2i &sampleBounds)
-        : GlobalSampler(RoundUpPow2(samplesPerPixel)),
-          sampleBounds(sampleBounds) {
-        if (!IsPowerOf2(samplesPerPixel))
-            Warning("Non power-of-two sample count rounded up to %" PRId64
-                    " for SobolSampler.",
-                    this->samplesPerPixel);
-        resolution = RoundUpPow2(
-            std::max(sampleBounds.Diagonal().x, sampleBounds.Diagonal().y));
-        log2Resolution = Log2Int(resolution);
-        if (resolution > 0) CHECK_EQ(1 << log2Resolution, resolution);
-    }
-    int64_t GetIndexForSample(int64_t sampleNum) const;
-    Float SampleDimension(int64_t index, int dimension) const;
+    // PtexTexture Public Methods
+    PtexTexture(const std::string &filename);
+    ~PtexTexture();
+    T Evaluate(const SurfaceInteraction &) const;
 
   private:
-    // SobolSampler Private Data
-    const Bounds2i sampleBounds;
-    int resolution, log2Resolution;
+    bool valid;
+    const std::string filename;
 };
 
-SobolSampler *CreateSobolSampler(const ParamSet &params,
-                                 const Bounds2i &sampleBounds);
+PtexTexture<Float> *CreatePtexFloatTexture(const Transform &tex2world,
+                                           const TextureParams &tp);
+PtexTexture<Spectrum> *CreatePtexSpectrumTexture(const Transform &tex2world,
+                                                 const TextureParams &tp);
 
 }  // namespace pbrt
 
-#endif  // PBRT_SAMPLERS_SOBOL_H
+#endif  // PBRT_TEXTURES_PTEX_H

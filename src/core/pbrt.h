@@ -39,8 +39,6 @@
 #define PBRT_CORE_PBRT_H
 
 // core/pbrt.h*
-#include "port.h"
-
 // Global Include Files
 #include <type_traits>
 #include <algorithm>
@@ -63,6 +61,21 @@
 #include <glog/logging.h>
 
 // Platform-specific definitions
+#if defined(_WIN32) || defined(_WIN64)
+  #define PBRT_IS_WINDOWS
+#endif
+
+#if defined(_MSC_VER)
+  #define PBRT_IS_MSVC
+  #if _MSC_VER == 1800
+    #define snprintf _snprintf
+  #endif
+#endif
+
+#ifndef PBRT_L1_CACHE_LINE_SIZE
+  #define PBRT_L1_CACHE_LINE_SIZE 64
+#endif
+
 #include <stdint.h>
 #if defined(PBRT_IS_MSVC)
 #include <float.h>
@@ -319,9 +332,16 @@ inline int Log2Int(int32_t v) { return Log2Int((uint32_t)v); }
 inline int Log2Int(uint64_t v) {
 #if defined(PBRT_IS_MSVC)
     unsigned long lz = 0;
-    if (_BitScanReverse64(&lz, v)) return lz;
-    return 0;
+#if defined(_WIN64)
+    _BitScanReverse64(&lz, v);
 #else
+    if  (_BitScanReverse(&lz, v >> 32))
+        lz += 32;
+    else
+        _BitScanReverse(&lz, v & 0xffffffff);
+#endif // _WIN64
+    return lz;
+#else  // PBRT_IS_MSVC
     return 63 - __builtin_clzll(v);
 #endif
 }

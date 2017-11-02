@@ -34,7 +34,7 @@ static void usage(const char *msg = nullptr, ...) {
 commands: assemble, cat, convert, diff, info, makesky
 
 assemble option:
-    --outflie          Output image filename.
+    --outfile          Output image filename.
 
 cat option:
     --sort             Sort output by pixel luminance.
@@ -413,7 +413,7 @@ int diff(int argc, char *argv[]) {
             if (d > .005) ++smallDiff;
             if (d > .05) ++bigDiff;
         }
-        if (diffImage) diffImage[i].FromRGB(diffRGB);
+        if (diffImage) diffImage[i] = RGBSpectrum::FromRGB(diffRGB);
     }
 
     double avg[2] = {sum[0] / (3. * res[0].x * res[0].y),
@@ -726,7 +726,7 @@ int convert(int argc, char *argv[]) {
                 rgb[0] /= m;
                 rgb[1] /= m;
                 rgb[2] /= m;
-                image[i] = Spectrum::FromRGB(rgb);
+                image[i] = RGBSpectrum::FromRGB(rgb);
             }
         }
     }

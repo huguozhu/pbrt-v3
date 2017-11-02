@@ -17290,26 +17290,18 @@ static const uint8_t fourierData[] = {
     0x61, 0x6c, 0x73, 0x65, 0xa,  0x7d,
 };
 
+static std::string inTestDir(const std::string &path) { return path; }
+
 // Small smoke test to make sure we get back reasonable values for a few known
 // inputs.
 TEST(BSDFs, Fourier) {
     // Write the serialized data to a temporary file
     // TODO: improve FourierBSDFTable to also be able to deserialize from a
     // given array.
-    char filename[L_tmpnam];
-#ifdef __GNUG__
-// Don't warn about tmpnam being deprecated. While it would be nice in
-// principle to use mkstmp(), it's not available on Windows, while
-// tmpnam is in the standard.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif  // __GNUG__
-    std::tmpnam(filename);
-#ifdef __GNUG__
-#pragma GCC diagnostic pop
-#endif  // __GNUG__
-    FILE *f = fopen(filename, "wb");
+    std::string filename = inTestDir("fourier.out");
+    FILE *f = fopen(filename.c_str(), "wb");
     ASSERT_TRUE(f);
+
     int sz = sizeof(fourierData);
     ASSERT_EQ(sz, fwrite(fourierData, 1, sz, f));
     ASSERT_EQ(0, fclose(f));
@@ -17343,5 +17335,5 @@ TEST(BSDFs, Fourier) {
     EXPECT_LT(err(w.z, 0.572980), .001);
 
     // Cleanup.
-    EXPECT_EQ(0, remove(filename));
+    EXPECT_EQ(0, remove(filename.c_str()));
 }

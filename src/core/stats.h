@@ -150,7 +150,7 @@ enum class Prof {
     BDPTGenerateSubpath,
     BDPTConnectSubpaths,
     LightDistribLookup,
-    LightDistribLookupL2,
+    LightDistribSpinWait,
     LightDistribCreation,
     DirectLighting,
     BSDFEvaluation,
@@ -181,6 +181,7 @@ enum class Prof {
     GetSample,
     TexFiltTrilerp,
     TexFiltEWA,
+    TexFiltPtex,
     NumProfCategories
 };
 
@@ -204,7 +205,7 @@ static const char *ProfNames[] = {
     "BDPT subpath generation",
     "BDPT subpath connections",
     "SpatialLightDistribution lookup",
-    "SpatialLightDistribution global lookup",
+    "SpatialLightDistribution spin wait",
     "SpatialLightDistribution creation",
     "Direct lighting",
     "BSDF::f()",
@@ -235,6 +236,7 @@ static const char *ProfNames[] = {
     "Sampler::GetSample[12]D()",
     "MIPMap::Lookup() (trilinear)",
     "MIPMap::Lookup() (EWA)",
+    "Ptex lookup",
 };
 
 static_assert((int)Prof::NumProfCategories ==
@@ -289,8 +291,7 @@ void CleanupProfiler();
     }                                                      \
     static StatRegisterer STATS_REG##var(STATS_FUNC##var)
 
-// Work around lack of support for constexpr in VS2013.
-#ifdef PBRT_IS_MSVC2013
+#ifndef PBRT_HAVE_CONSTEXPR
 #define STATS_INT64_T_MIN LLONG_MAX
 #define STATS_INT64_T_MAX _I64_MIN
 #define STATS_DBL_T_MIN DBL_MAX

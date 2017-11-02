@@ -35,43 +35,34 @@
 #pragma once
 #endif
 
-#ifndef PBRT_SAMPLERS_SOBOL_H
-#define PBRT_SAMPLERS_SOBOL_H
+#ifndef PBRT_INTEGRATORS_AO_H
+#define PBRT_INTEGRATORS_AO_H
 
-// samplers/sobol.h*
-#include "sampler.h"
+// integrators/ao.h*
+#include "pbrt.h"
+#include "integrator.h"
 
 namespace pbrt {
 
-// SobolSampler Declarations
-class SobolSampler : public GlobalSampler {
+// AOIntegrator Declarations
+class AOIntegrator : public SamplerIntegrator {
   public:
-    // SobolSampler Public Methods
-    std::unique_ptr<Sampler> Clone(int seed);
-    SobolSampler(int64_t samplesPerPixel, const Bounds2i &sampleBounds)
-        : GlobalSampler(RoundUpPow2(samplesPerPixel)),
-          sampleBounds(sampleBounds) {
-        if (!IsPowerOf2(samplesPerPixel))
-            Warning("Non power-of-two sample count rounded up to %" PRId64
-                    " for SobolSampler.",
-                    this->samplesPerPixel);
-        resolution = RoundUpPow2(
-            std::max(sampleBounds.Diagonal().x, sampleBounds.Diagonal().y));
-        log2Resolution = Log2Int(resolution);
-        if (resolution > 0) CHECK_EQ(1 << log2Resolution, resolution);
-    }
-    int64_t GetIndexForSample(int64_t sampleNum) const;
-    Float SampleDimension(int64_t index, int dimension) const;
-
-  private:
-    // SobolSampler Private Data
-    const Bounds2i sampleBounds;
-    int resolution, log2Resolution;
+    // AOIntegrator Public Methods
+    AOIntegrator(bool cosSample, int nSamples,
+                 std::shared_ptr<const Camera> camera,
+                 std::shared_ptr<Sampler> sampler,
+                 const Bounds2i &pixelBounds);
+    Spectrum Li(const RayDifferential &ray, const Scene &scene,
+                Sampler &sampler, MemoryArena &arena, int depth) const;
+ private:
+    bool cosSample;
+    int nSamples;
 };
 
-SobolSampler *CreateSobolSampler(const ParamSet &params,
-                                 const Bounds2i &sampleBounds);
+AOIntegrator *CreateAOIntegrator(const ParamSet &params,
+                                 std::shared_ptr<Sampler> sampler,
+                                 std::shared_ptr<const Camera> camera);
 
 }  // namespace pbrt
 
-#endif  // PBRT_SAMPLERS_SOBOL_H
+#endif  // PBRT_INTEGRATORS_PATH_H

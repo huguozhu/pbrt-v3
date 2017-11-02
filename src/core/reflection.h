@@ -365,7 +365,6 @@ class FresnelSpecular : public BxDF {
           T(T),
           etaA(etaA),
           etaB(etaB),
-          fresnel(etaA, etaB),
           mode(mode) {}
     Spectrum f(const Vector3f &wo, const Vector3f &wi) const {
         return Spectrum(0.f);
@@ -379,7 +378,6 @@ class FresnelSpecular : public BxDF {
     // FresnelSpecular Private Data
     const Spectrum R, T;
     const Float etaA, etaB;
-    const FresnelDielectric fresnel;
     const TransportMode mode;
 };
 
