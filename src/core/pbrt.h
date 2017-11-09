@@ -403,6 +403,7 @@ int FindInterval(int size, const Predicate &pred) {
 
 inline Float Lerp(Float t, Float v1, Float v2) { return (1 - t) * v1 + t * v2; }
 
+// 求解二次方程：ax2+bx+c=0的两个根：
 inline bool Quadratic(Float a, Float b, Float c, Float *t0, Float *t1) {
     // Find quadratic discriminant
     double discrim = (double)b * (double)b - 4 * (double)a * (double)c;

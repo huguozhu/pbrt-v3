@@ -48,6 +48,7 @@
 namespace pbrt {
 
 // Interaction Declarations
+// 相交点信息
 struct Interaction {
     // Interaction Public Methods
     Interaction() : time(0) {}
@@ -142,10 +143,10 @@ class SurfaceInteraction : public Interaction {
 	Spectrum Le(const Vector3f &w) const;		
 
     // SurfaceInteraction Public Data
-    Point2f uv;						// 相交点的uv坐标
-    Vector3f dpdu, dpdv;			// 在相交点的坐标的对u、v的微分
-    Normal3f dndu, dndv;			// 在相交点的法线的对u、v的微分
-    const Shape *shape = nullptr;	// 相交点对应的几何坐标
+    Point2f uv;						// 基于表面参数化的uv坐标
+    Vector3f dpdu, dpdv;			// 相交点坐标变化的偏微分
+    Normal3f dndu, dndv;			// 表面法线变化的偏微分
+    const Shape *shape = nullptr;	// 相交点对应的几何Shape
     struct {
         Normal3f n;
         Vector3f dpdu, dpdv;

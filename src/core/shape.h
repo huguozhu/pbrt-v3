@@ -63,7 +63,7 @@ class Shape {
                             bool testAlphaTexture = true) const {
         return Intersect(ray, nullptr, nullptr, testAlphaTexture);
     }
-    virtual Float Area() const = 0;
+    virtual Float Area() const = 0;		// 表面积，用于将Shape类作为区域光源
     // Sample a point on the surface of the shape and return the PDF with
     // respect to area on the surface.
     virtual Interaction Sample(const Point2f &u, Float *pdf) const = 0;

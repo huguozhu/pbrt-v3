@@ -409,6 +409,7 @@ inline Ray Transform::operator()(const Ray &r, const Vector3f &oErrorIn,
 }
 
 // AnimatedTransform Declarations
+// 表示某一时间段内（startTime-->endTime）的空间变化（startTransform-->endTransform）
 class AnimatedTransform {
   public:
     // AnimatedTransform Public Methods

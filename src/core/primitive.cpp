@@ -41,6 +41,8 @@ namespace pbrt {
 
 // Primitive Method Definitions
 Primitive::~Primitive() {}
+// Aggregate相交例程将Intersection::primitive指针集合指向与光线实际相交的图元，而非加载的图元，
+// 所以以下三个函数都不会被调用到
 const AreaLight *Aggregate::GetAreaLight() const {
     LOG(FATAL) <<
         "Aggregate::GetAreaLight() method"
