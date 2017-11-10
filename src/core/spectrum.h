@@ -43,7 +43,8 @@
 #include "stringprint.h"
 
 namespace pbrt {
-
+// SPD：spectrum power distribution（光谱功率分布）
+// 光谱：复色光经过色散系统（例如棱镜、光栅）分光后，被色散开的单色光按波长（或频率）大小而依次排列的图案。
 // Spectrum Utility Declarations
 // 以下三个参数表示第一个采样的波长范围为【400,405】， 第二个采样波长范围为【405，410】......第60个采样波长范围为【695，700】,详见FromSampled()函数
 static const int sampledLambdaStart = 400;		// 人眼是可见光的最小波长（纳米）
@@ -288,7 +289,8 @@ class CoefficientSpectrum {
 };
 
 // 波长光谱
-class SampledSpectrum : public CoefficientSpectrum<nSpectralSamples> {
+class SampledSpectrum : public CoefficientSpectrum<nSpectralSamples> 
+{
   public:
     // SampledSpectrum Public Methods
     SampledSpectrum(Float v = 0.f) : CoefficientSpectrum(v) {}
@@ -297,9 +299,9 @@ class SampledSpectrum : public CoefficientSpectrum<nSpectralSamples> {
 	
 	// SPD(spectrum power distribution)读入,lambda(波长),v(功率),n(采样数)
 	// 函数具体说明，参见page319
-    static SampledSpectrum FromSampled(const Float *lambda, const Float *v,
-                                       int n) {
+    static SampledSpectrum FromSampled(const Float *lambda, const Float *v, int n) {
         // Sort samples if unordered, use sorted for returned spectrum
+		// 根据波长排序
         if (!SpectrumSamplesSorted(lambda, v, n)) {
             std::vector<Float> slambda(&lambda[0], &lambda[n]);
             std::vector<Float> sv(&v[0], &v[n]);

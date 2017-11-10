@@ -253,7 +253,9 @@ BVHBuildNode *BVHAccel::recursiveBuild(
         }
         node->InitLeaf(firstPrimOffset, nPrimitives, bounds);
         return node;
-    } else {
+    } 
+	else 
+	{
         // Compute bound of primitive centroids, choose split dimension _dim_
         Bounds3f centroidBounds;
         for (int i = start; i < end; ++i)
@@ -272,7 +274,9 @@ BVHBuildNode *BVHAccel::recursiveBuild(
             }
             node->InitLeaf(firstPrimOffset, nPrimitives, bounds);
             return node;
-        } else {
+        } 
+		else 
+		{
             // Partition primitives based on _splitMethod_
             switch (splitMethod) {
             case SplitMethod::Middle: {

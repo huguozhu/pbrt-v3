@@ -52,10 +52,11 @@ struct MortonPrimitive;
 struct LinearBVHNode;
 
 // BVHAccel Declarations
+// BVH: Bounding Volume Hierarchies(包围体层次结构)
 class BVHAccel : public Aggregate {
   public:
     // BVHAccel Public Types
-	// 创建BVH的四种算法
+	// 创建BVH的三种算法
     enum class SplitMethod { SAH, HLBVH, Middle, EqualCounts };
 
     // BVHAccel Public Methods
@@ -69,7 +70,7 @@ class BVHAccel : public Aggregate {
 
   private:
     // BVHAccel Private Methods
-	// 实用SAH、Middle、EqualCounts算法创建BVH树
+	// 实用SAH、HLBVH、Middle算法创建BVH树
 	// 指定start和end，表示可以实用所有primitive的一个子集创建BVH树
     BVHBuildNode *recursiveBuild(
         MemoryArena &arena, std::vector<BVHPrimitiveInfo> &primitiveInfo,
