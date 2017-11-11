@@ -176,7 +176,7 @@ SampledSpectrum::SampledSpectrum(const RGBSpectrum &r, SpectrumType t) {
     r.ToRGB(rgb);
     *this = SampledSpectrum::FromRGB(rgb, t);
 }
-
+// 采用不规则的波长采样集合，以及SPD值，在两个采样值之间执行线性插值计算，并返回既定波长处的SPD值
 Float InterpolateSpectrumSamples(const Float *lambda, const Float *vals, int n,
                                  Float l) {
     for (int i = 0; i < n - 1; ++i) CHECK_GT(lambda[i + 1], lambda[i]);

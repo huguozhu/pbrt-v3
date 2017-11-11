@@ -50,8 +50,7 @@ namespace pbrt {
 static const int sampledLambdaStart = 400;		// 人眼是可见光的最小波长（纳米）
 static const int sampledLambdaEnd = 700;		// 人眼是可见光的最大波长（纳米）
 static const int nSpectralSamples = 60;			// 默认用的光谱采样数
-extern bool SpectrumSamplesSorted(const Float *lambda, const Float *vals,
-                                  int n);
+extern bool SpectrumSamplesSorted(const Float *lambda, const Float *vals, int n);
 extern void SortSpectrumSamples(Float *lambda, Float *vals, int n);
 extern Float AverageSpectrumSamples(const Float *lambda, const Float *vals,
                                     int n, Float lambdaStart, Float lambdaEnd);
@@ -76,6 +75,7 @@ extern void BlackbodyNormalized(const Float *lambda, int n, Float T,
 
 // Spectral Data Declarations
 static const int nCIESamples = 471;		// 从360到380nn,共471个采样点
+// SPD转XYZ颜色空间匹配的3条曲线
 extern const Float CIE_X[nCIESamples];
 extern const Float CIE_Y[nCIESamples];
 extern const Float CIE_Z[nCIESamples];
@@ -326,12 +326,10 @@ class SampledSpectrum : public CoefficientSpectrum<nSpectralSamples>
                              sampledLambdaStart, sampledLambdaEnd);
             Float wl1 = Lerp(Float(i + 1) / Float(nSpectralSamples),
                              sampledLambdaStart, sampledLambdaEnd);
-            X.c[i] = AverageSpectrumSamples(CIE_lambda, CIE_X, nCIESamples, wl0,
-                                            wl1);
-            Y.c[i] = AverageSpectrumSamples(CIE_lambda, CIE_Y, nCIESamples, wl0,
-                                            wl1);
-            Z.c[i] = AverageSpectrumSamples(CIE_lambda, CIE_Z, nCIESamples, wl0,
-                                            wl1);
+			// 计算SPD转RGB的曲线值
+            X.c[i] = AverageSpectrumSamples(CIE_lambda, CIE_X, nCIESamples, wl0, wl1);
+            Y.c[i] = AverageSpectrumSamples(CIE_lambda, CIE_Y, nCIESamples, wl0, wl1);
+            Z.c[i] = AverageSpectrumSamples(CIE_lambda, CIE_Z, nCIESamples, wl0, wl1);
         }
 
         // Compute RGB to spectrum functions for _SampledSpectrum_
@@ -384,6 +382,7 @@ class SampledSpectrum : public CoefficientSpectrum<nSpectralSamples>
                                        nRGB2SpectSamples, wl0, wl1);
         }
     }
+	// SPD光谱-->XYZ颜色
     void ToXYZ(Float xyz[3]) const {
         xyz[0] = xyz[1] = xyz[2] = 0.f;
         for (int i = 0; i < nSpectralSamples; ++i) {
@@ -397,22 +396,23 @@ class SampledSpectrum : public CoefficientSpectrum<nSpectralSamples>
         xyz[1] *= scale;
         xyz[2] *= scale;
     }
+	// 明亮度
     Float y() const {
         Float yy = 0.f;
         for (int i = 0; i < nSpectralSamples; ++i) yy += Y.c[i] * c[i];
         return yy * Float(sampledLambdaEnd - sampledLambdaStart) /
                Float(CIE_Y_integral * nSpectralSamples);
     }
+	// SPD光谱-->RGB颜色
     void ToRGB(Float rgb[3]) const {
         Float xyz[3];
         ToXYZ(xyz);
         XYZToRGB(xyz, rgb);
     }
+	// SampledSpectrum颜色-->RGBSpectrum颜色
     RGBSpectrum ToRGBSpectrum() const;
-    static SampledSpectrum FromRGB(
-        const Float rgb[3], SpectrumType type = SpectrumType::Illuminant);
-    static SampledSpectrum FromXYZ(
-        const Float xyz[3], SpectrumType type = SpectrumType::Reflectance) {
+    static SampledSpectrum FromRGB(const Float rgb[3], SpectrumType type = SpectrumType::Illuminant);
+    static SampledSpectrum FromXYZ(const Float xyz[3], SpectrumType type = SpectrumType::Reflectance) {
         Float rgb[3];
         XYZToRGB(xyz, rgb);
         return FromRGB(rgb, type);
@@ -440,12 +440,10 @@ class RGBSpectrum : public CoefficientSpectrum<3> {
     // RGBSpectrum Public Methods
     RGBSpectrum(Float v = 0.f) : CoefficientSpectrum<3>(v) {}
     RGBSpectrum(const CoefficientSpectrum<3> &v) : CoefficientSpectrum<3>(v) {}
-    RGBSpectrum(const RGBSpectrum &s,
-                SpectrumType type = SpectrumType::Reflectance) {
+    RGBSpectrum(const RGBSpectrum &s, SpectrumType type = SpectrumType::Reflectance) {
         *this = s;
     }
-    static RGBSpectrum FromRGB(const Float rgb[3],
-                               SpectrumType type = SpectrumType::Reflectance) {
+    static RGBSpectrum FromRGB(const Float rgb[3], SpectrumType type = SpectrumType::Reflectance) {
         RGBSpectrum s;
         s.c[0] = rgb[0];
         s.c[1] = rgb[1];
@@ -471,6 +469,7 @@ class RGBSpectrum : public CoefficientSpectrum<3> {
         const Float YWeight[3] = {0.212671f, 0.715160f, 0.072169f};
         return YWeight[0] * c[0] + YWeight[1] * c[1] + YWeight[2] * c[2];
     }
+	// 通过SPD构建RGB光谱过程：1）光谱-->XYZ	2）XYZ-->RGB
     static RGBSpectrum FromSampled(const Float *lambda, const Float *v, int n) {
         // Sort samples if unordered, use sorted for returned spectrum
         if (!SpectrumSamplesSorted(lambda, v, n)) {
