@@ -45,6 +45,7 @@
 namespace pbrt {
 
 // StratifiedSampler Declarations
+// 分层采样：将图像平面划分为矩形区域，并在各区域内生成单一采样
 class StratifiedSampler : public PixelSampler {
   public:
     // StratifiedSampler Public Methods
@@ -60,6 +61,8 @@ class StratifiedSampler : public PixelSampler {
   private:
     // StratifiedSampler Private Data
     const int xPixelSamples, yPixelSamples;
+	// n-rooks sampling:在nxn个小格子中，生成n个采样点，每个采样点在其横竖行都没有其他采样点
+	// jitter sampling:在nxn个小格子中，每个小格子生成一个采样点
     const bool jitterSamples;
 };
 

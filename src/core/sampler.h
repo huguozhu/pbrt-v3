@@ -75,7 +75,7 @@ class Sampler {
 
   protected:
     // Sampler Protected Data
-    Point2i currentPixel;				// 当前被2采样像素点的位置
+    Point2i currentPixel;				// 当前被采样像素点的位置
     int64_t currentPixelSampleIndex;	// 当前被采样像素点的采样索引号
     std::vector<int> samples1DArraySizes, samples2DArraySizes;
     std::vector<std::vector<Float>> sampleArray1D;
