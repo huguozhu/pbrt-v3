@@ -234,10 +234,12 @@ void SamplerIntegrator::Render(const Scene &scene) {
     Vector2i sampleExtent = sampleBounds.Diagonal();
     const int tileSize = 16;
 	// 将渲染区域分为16*16的多个小区域，这样可以使用多线程独立完成运算
+	// nTiles:共分成（nTiles.x, nTiles.y)组区域
     Point2i nTiles((sampleExtent.x + tileSize - 1) / tileSize,
                    (sampleExtent.y + tileSize - 1) / tileSize);
     ProgressReporter reporter(nTiles.x * nTiles.y, "Rendering");
     {
+		// 每次处理一个16*16的区域
         ParallelFor2D([&](Point2i tile) {
             // Render section of image corresponding to _tile_
 
@@ -249,7 +251,7 @@ void SamplerIntegrator::Render(const Scene &scene) {
             std::unique_ptr<Sampler> tileSampler = sampler->Clone(seed);
 
             // Compute sample bounds for tile
-			// 分成16*16的小块
+			// 将tile翻译成分成16*16小块的坐标
             int x0 = sampleBounds.pMin.x + tile.x * tileSize;
             int x1 = std::min(x0 + tileSize, sampleBounds.pMax.x);
             int y0 = sampleBounds.pMin.y + tile.y * tileSize;
@@ -263,7 +265,7 @@ void SamplerIntegrator::Render(const Scene &scene) {
 
             // Loop over pixels in tile to render them
             for (Point2i pixel : tileBounds) {
-				// 循环每个像素点
+				// 遍历该区域16*16像素中的每个像素
                 {
                     ProfilePhase pp(Prof::StartPixel);
                     tileSampler->StartPixel(pixel);
