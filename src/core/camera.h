@@ -112,7 +112,7 @@ class ProjectiveCamera : public Camera {
 
   protected:
     // ProjectiveCamera Protected Data
-	// pbrt系统使用左手系，和OpenGL一样
+	// pbrt系统使用左手系，和D3D一样
 	// 几个空间的定义：物体空间(Object Space),世界空间(World Space),相机空间(Camera Space),
 	//		屏幕空间(Screen Space),标准化设备空间(Normalized device coordinate--NDC),光栅空间(Raster Space)
 	// 物体空间：几何体被定义的空间
