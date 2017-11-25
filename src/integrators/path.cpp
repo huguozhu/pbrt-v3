@@ -68,7 +68,7 @@ Spectrum PathIntegrator::Li(const RayDifferential &r, const Scene &scene,
     Spectrum L(0.f), beta(1.f);
     RayDifferential ray(r);
     bool specularBounce = false;
-    int bounces;
+    int bounces;	// 反弹次数
     // Added after book publication: etaScale tracks the accumulated effect
     // of radiance scaling due to rays passing through refractive
     // boundaries (see the derivation on p. 527 of the third edition). We
@@ -90,7 +90,8 @@ Spectrum PathIntegrator::Li(const RayDifferential &r, const Scene &scene,
         // Possibly add emitted light at intersection
         if (bounces == 0 || specularBounce) {
             // Add emitted light at path vertex or from the environment
-			// 在第一次碰撞时，如果有交点则判断是否碰到发光体，否则把infiniteLights的光照影响加入
+			// 在第一次碰撞时，如果有交点，则判断是否碰到发光体，如是发光体则加入发光体的放射光辐射度
+			// 否则把infiniteLights的光照影响加入
             if (foundIntersection) {
                 L += beta * isect.Le(-ray.d);
                 VLOG(2) << "Added Le -> L = " << L;

@@ -50,6 +50,7 @@
 namespace pbrt {
 
 // Integrator Declarations
+// 积分器：计算源自场景表面的散射辐射度，，计算表述环境辐射度平衡分布的积分方程。
 class Integrator {
   public:
     // Integrator Interface
@@ -81,6 +82,7 @@ class SamplerIntegrator : public Integrator {
                       std::shared_ptr<Sampler> sampler,
                       const Bounds2i &pixelBounds)
         : camera(camera), sampler(sampler), pixelBounds(pixelBounds) {}
+	// 实现积分器与场景相关的预处理，例如分配与场景光源数量相关的附加数据结构
     virtual void Preprocess(const Scene &scene, Sampler &sampler) {}
     void Render(const Scene &scene);
 

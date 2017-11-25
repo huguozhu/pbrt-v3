@@ -53,7 +53,9 @@ class Camera {
     Camera(const AnimatedTransform &CameraToWorld, Float shutterOpen,
            Float shutterClose, Film *film, const Medium *medium);
     virtual ~Camera();
+	// 针对既定图像采样生成一条光线
     virtual Float GenerateRay(const CameraSample &sample, Ray *ray) const = 0;
+	// 生成一条光线，同事计算在图像平面x、y方向上偏离一个像素的光线。
     virtual Float GenerateRayDifferential(const CameraSample &sample,
                                           RayDifferential *rd) const;
     virtual Spectrum We(const Ray &ray, Point2f *pRaster2 = nullptr) const;
@@ -110,7 +112,7 @@ class ProjectiveCamera : public Camera {
 
   protected:
     // ProjectiveCamera Protected Data
-	// pbrt系统使用左手系，和OpenGL一样
+	// pbrt系统使用左手系，和D3D一样
 	// 几个空间的定义：物体空间(Object Space),世界空间(World Space),相机空间(Camera Space),
 	//		屏幕空间(Screen Space),标准化设备空间(Normalized device coordinate--NDC),光栅空间(Raster Space)
 	// 物体空间：几何体被定义的空间

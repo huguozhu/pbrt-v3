@@ -243,7 +243,7 @@ PBRT_THREAD_LOCAL int ThreadIndex;
 int MaxThreadIndex() {
     return PbrtOptions.nThreads == 0 ? NumSystemCores() : PbrtOptions.nThreads;
 }
-
+// 每次用func处理一个16*16像素的区域， 共处理count个这样的区域
 void ParallelFor2D(std::function<void(Point2i)> func, const Point2i &count) {
     CHECK(threads.size() > 0 || MaxThreadIndex() == 1);
 
