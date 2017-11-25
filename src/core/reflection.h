@@ -48,7 +48,9 @@
 namespace pbrt {
 
 // Reflection Declarations
+// 绝缘材质的菲涅尔反射率
 Float FrDielectric(Float cosThetaI, Float etaI, Float etaT);
+// 导体的菲涅尔反射率
 Spectrum FrConductor(Float cosThetaI, const Spectrum &etaI,
                      const Spectrum &etaT, const Spectrum &k);
 
@@ -211,21 +213,26 @@ inline std::ostream &operator<<(std::ostream &os, const BSDF &bsdf) {
 }
 
 // BxDF Declarations
+// BRDF（双向反射分布函数）和BTDF（双向散射分布函数）的父类
 class BxDF {
   public:
     // BxDF Interface
     virtual ~BxDF() {}
     BxDF(BxDFType type) : type(type) {}
     bool MatchesFlags(BxDFType t) const { return (type & t) == type; }
-	// 返回出射、入射两个方向上的双向反射分布函数BRDF或双向投射分布函数BTDF
-	// 不是所有的BxDF都可以求值，例如对于镜子等完美反射的材质，在某些方向上值为0
+	// 返回出射、入射两个方向上的双向反射分布函数BRDF或双向透射分布函数BTDF
+	// 对荧光材料（fluorescent）需要返回一个NxN矩阵，并对光谱采样的能量传输进行编码（N为Spectrum的采样数量）
     virtual Spectrum f(const Vector3f &wo, const Vector3f &wi) const = 0;
+	// 不是所有的BxDF都可以求值，例如对于镜子、玻璃、水面等从一个入射方向将光线散射至单一出射方向，
+	// 可使用delta分布来描述这种除了出射方向其他都是0的情况，即使用Sample_f()
     virtual Spectrum Sample_f(const Vector3f &wo, Vector3f *wi,
                               const Point2f &sample, Float *pdf,
                               BxDFType *sampledType = nullptr) const;
-    virtual Spectrum rho(const Vector3f &wo, int nSamples,
-                         const Point2f *samples) const;
-	// 使用蒙特卡洛算法
+    // 计算反射率ρ：物体表面所能反射的在出射方向wo的辐射能和它所接受的辐射能之比。是有方向性的，出射方向不同，反射率不同。
+	// 多数使用Monte Carlo积分计算，参数nSamples和samples用于Monte Carlo算法中。
+	virtual Spectrum rho(const Vector3f &wo, int nSamples,
+                          const Point2f *samples) const;
+	// 计算半球反射率ρ：使用蒙特卡洛算法
     virtual Spectrum rho(int nSamples, const Point2f *samples1,
                          const Point2f *samples2) const;
     virtual Float Pdf(const Vector3f &wo, const Vector3f &wi) const;
@@ -263,7 +270,7 @@ class ScaledBxDF : public BxDF {
     BxDF *bxdf;
     Spectrum scale;
 };
-
+// 菲涅尔反射
 class Fresnel {
   public:
     // Fresnel Interface
@@ -276,9 +283,9 @@ inline std::ostream &operator<<(std::ostream &os, const Fresnel &f) {
     os << f.ToString();
     return os;
 }
-
+// 导体的菲涅尔反射
 class FresnelConductor : public Fresnel {
-  public:
+public:
     // FresnelConductor Public Methods
     Spectrum Evaluate(Float cosThetaI) const;
     FresnelConductor(const Spectrum &etaI, const Spectrum &etaT,
@@ -286,21 +293,24 @@ class FresnelConductor : public Fresnel {
         : etaI(etaI), etaT(etaT), k(k) {}
     std::string ToString() const;
 
-  private:
+private:
+	// etaI、etaT：两边介质的折射率
+	// K：导体的吸收系数
     Spectrum etaI, etaT, k;
 };
-
+// 绝缘体的菲涅尔反射
 class FresnelDielectric : public Fresnel {
-  public:
+public:
     // FresnelDielectric Public Methods
     Spectrum Evaluate(Float cosThetaI) const;
     FresnelDielectric(Float etaI, Float etaT) : etaI(etaI), etaT(etaT) {}
     std::string ToString() const;
 
-  private:
+private:
+	// etaI、etaT：两边介质的折射率
     Float etaI, etaT;
 };
-
+// 全部反射
 class FresnelNoOp : public Fresnel {
   public:
     Spectrum Evaluate(Float) const { return Spectrum(1.); }
