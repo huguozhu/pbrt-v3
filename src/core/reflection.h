@@ -447,7 +447,7 @@ class OrenNayar : public BxDF {
     const Spectrum R;
     Float A, B;
 };
-
+// 微表面反射包括三种几个效果：Masking、Shadowing、Interreflection
 class MicrofacetReflection : public BxDF {
   public:
     // MicrofacetReflection Public Methods
