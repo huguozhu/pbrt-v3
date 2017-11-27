@@ -48,9 +48,9 @@
 namespace pbrt {
 
 // Reflection Declarations
-// 绝缘材质的菲涅尔反射率
+// 绝缘材质的菲涅耳反射率
 Float FrDielectric(Float cosThetaI, Float etaI, Float etaT);
-// 导体的菲涅尔反射率
+// 导体的菲涅耳反射率
 Spectrum FrConductor(Float cosThetaI, const Spectrum &etaI,
                      const Spectrum &etaT, const Spectrum &k);
 
@@ -90,11 +90,11 @@ inline Float CosDPhi(const Vector3f &wa, const Vector3f &wb) {
                                                 (wb.x * wb.x + wb.y * wb.y)),
         -1, 1);
 }
-
+// 已知出射向量wo和法线n，求入射向量（入射角和出射角可交换）
 inline Vector3f Reflect(const Vector3f &wo, const Vector3f &n) {
     return -wo + 2 * Dot(wo, n) * n;
 }
-
+// 已知入射向量wi，法线n和介质的折射系数，如果可以折射，返回True，并输出折射向量wt，否则返回False
 inline bool Refract(const Vector3f &wi, const Normal3f &n, Float eta,
                     Vector3f *wt) {
     // Compute $\cos \theta_\roman{t}$ using Snell's law
@@ -108,11 +108,11 @@ inline bool Refract(const Vector3f &wi, const Normal3f &n, Float eta,
     *wt = eta * -wi + (eta * cosThetaI - cosThetaT) * Vector3f(n);
     return true;
 }
-
+// 判断是否处于同一个半球，参见函数CosTheta()。
 inline bool SameHemisphere(const Vector3f &w, const Vector3f &wp) {
-    return w.z * wp.z > 0;
+	return w.z * wp.z > 0;
 }
-
+// 判断是否处于同一个半球，参见函数CosTheta()。
 inline bool SameHemisphere(const Vector3f &w, const Normal3f &wp) {
     return w.z * wp.z > 0;
 }
@@ -222,19 +222,24 @@ class BxDF {
     bool MatchesFlags(BxDFType t) const { return (type & t) == type; }
 	// 返回出射、入射两个方向上的双向反射分布函数BRDF或双向透射分布函数BTDF
 	// 对荧光材料（fluorescent）需要返回一个NxN矩阵，并对光谱采样的能量传输进行编码（N为Spectrum的采样数量）
+	// 输入：出射向量wo和入射向量wi
+	// 输出: 对应的BRDF/BTDF
     virtual Spectrum f(const Vector3f &wo, const Vector3f &wi) const = 0;
 	// 不是所有的BxDF都可以求值，例如对于镜子、玻璃、水面等从一个入射方向将光线散射至单一出射方向，
 	// 可使用delta分布来描述这种除了出射方向其他都是0的情况，即使用Sample_f()
+	// 输入：出射向量wo，采样点坐标sample
+	// 输出：入射向量wi，用MentoCarlo算法计算出的采样点sample的pdf值
     virtual Spectrum Sample_f(const Vector3f &wo, Vector3f *wi,
                               const Point2f &sample, Float *pdf,
                               BxDFType *sampledType = nullptr) const;
-    // 计算反射率ρ：物体表面所能反射的在出射方向wo的辐射能和它所接受的辐射能之比。是有方向性的，出射方向不同，反射率不同。
-	// 多数使用Monte Carlo积分计算，参数nSamples和samples用于Monte Carlo算法中。
+    // 计算“半球-方向反射率ρ”：物体表面所能反射的在出射方向wo的辐射能和它所接受的辐射能之比。是有方向性的，出射方向不同，反射率不同。
+	// 多数使用Monte Carlo积分计算，参数nSamples和samples用于MonteCarlo算法中。
 	virtual Spectrum rho(const Vector3f &wo, int nSamples,
                           const Point2f *samples) const;
-	// 计算半球反射率ρ：使用蒙特卡洛算法
+	// 计算“半球-半球反射率ρ”：使用MonteCarlo算法
     virtual Spectrum rho(int nSamples, const Point2f *samples1,
                          const Point2f *samples2) const;
+	// 计算pdf：probability density function，概率密度函数：光被采样的概率
     virtual Float Pdf(const Vector3f &wo, const Vector3f &wi) const;
     virtual std::string ToString() const = 0;
 
@@ -270,7 +275,7 @@ class ScaledBxDF : public BxDF {
     BxDF *bxdf;
     Spectrum scale;
 };
-// 菲涅尔反射
+// 菲涅耳反射:是指出现在不同角度上的不同的反射率
 class Fresnel {
   public:
     // Fresnel Interface
@@ -283,7 +288,7 @@ inline std::ostream &operator<<(std::ostream &os, const Fresnel &f) {
     os << f.ToString();
     return os;
 }
-// 导体的菲涅尔反射
+// 导体的菲涅耳反射
 class FresnelConductor : public Fresnel {
 public:
     // FresnelConductor Public Methods
@@ -298,7 +303,7 @@ private:
 	// K：导体的吸收系数
     Spectrum etaI, etaT, k;
 };
-// 绝缘体的菲涅尔反射
+// 绝缘体的菲涅耳反射
 class FresnelDielectric : public Fresnel {
 public:
     // FresnelDielectric Public Methods
@@ -334,8 +339,8 @@ class SpecularReflection : public BxDF {
 
   private:
     // SpecularReflection Private Data
-    const Spectrum R;
-    const Fresnel *fresnel;
+    const Spectrum R;			// 缩放反射颜色
+    const Fresnel *fresnel;		// 介质的菲涅耳导体/绝缘体（FresnelConductor/FresnelDielectric）属性
 };
 
 class SpecularTransmission : public BxDF {
@@ -404,7 +409,7 @@ class LambertianReflection : public BxDF {
 
   private:
     // LambertianReflection Private Data
-    const Spectrum R;	// 入射光线强度
+    const Spectrum R;	// 反射光谱R：表示入射光被反射的百分比量。
 };
 
 class LambertianTransmission : public BxDF {
