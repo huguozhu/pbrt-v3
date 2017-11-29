@@ -232,7 +232,9 @@ class BxDF {
     virtual Spectrum Sample_f(const Vector3f &wo, Vector3f *wi,
                               const Point2f &sample, Float *pdf,
                               BxDFType *sampledType = nullptr) const;
-    // 计算“半球-方向反射率ρ”：物体表面所能反射的在出射方向wo的辐射能和它所接受的辐射能之比。是有方向性的，出射方向不同，反射率不同。
+    // 计算“方向-半球反射率ρ(Directional-Semispherical Reflectance)”：
+	// 物体表面所能反射的在出射方向wo的辐射能和它所接受的辐射能之比。是有方向性的，出射方向不同，反射率不同。
+	// 值范围：【0,1】,等于0时表示入射光照都被吸收，等于1表示入射光照都被反射（可用RGB分量或光谱分量）
 	// 多数使用Monte Carlo积分计算，参数nSamples和samples用于MonteCarlo算法中。
 	virtual Spectrum rho(const Vector3f &wo, int nSamples,
                           const Point2f *samples) const;
@@ -275,11 +277,12 @@ class ScaledBxDF : public BxDF {
     BxDF *bxdf;
     Spectrum scale;
 };
-// 菲涅耳反射:是指出现在不同角度上的不同的反射率
+// 菲涅耳反射:出现在不同角度上有不同的反射率
 class Fresnel {
   public:
     // Fresnel Interface
     virtual ~Fresnel();
+	// 返回入射余弦值为cosI时，介质的反射率
     virtual Spectrum Evaluate(Float cosI) const = 0;
     virtual std::string ToString() const = 0;
 };
@@ -364,8 +367,12 @@ class SpecularTransmission : public BxDF {
 
   private:
     // SpecularTransmission Private Data
+	// 缩放折射颜色
     const Spectrum T;
+	// etaA：与法线同向的介质的反射率
+	// etaB：与法线反向的介质的反射率
     const Float etaA, etaB;
+	// 对应的绝缘体菲涅耳属性（金属导体没有折射）
     const FresnelDielectric fresnel;
     const TransportMode mode;
 };
@@ -427,7 +434,7 @@ class LambertianTransmission : public BxDF {
 
   private:
     // LambertianTransmission Private Data
-    Spectrum T;
+    Spectrum T;		// 折射光谱T：表示入射光被折射的百分比量。
 };
 
 class OrenNayar : public BxDF {
