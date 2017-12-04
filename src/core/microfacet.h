@@ -45,16 +45,24 @@
 namespace pbrt {
 
 // MicrofacetDistribution Declarations
+// 微面元分布
 class MicrofacetDistribution {
   public:
     // MicrofacetDistribution Public Methods
     virtual ~MicrofacetDistribution();
+	// 微面元法线发布函数(Normal Distribution Function)
+	// 意义：微面元中法线为wh的面元面积占总面积的百分比
     virtual Float D(const Vector3f &wh) const = 0;
+	// 表示不可见、被阴影遮挡的微面元面积占可使面积的百分比
     virtual Float Lambda(const Vector3f &w) const = 0;
+	// 史密斯遮挡函数（Smith's masking-shadowing function），用于计算微面元几何遮挡分布
+	// 不同点：当微面元的可视度独立于半向量(half vector)
     Float G1(const Vector3f &w) const {
         //    if (Dot(w, wh) * CosTheta(w) < 0.) return 0.;
         return 1 / (1 + Lambda(w));
     }
+	// 微面元几何遮挡分布(Shadowing-Masking Term)
+	// 意义：面元中未被遮挡(Shadowing&&Masking)的百分比
     virtual Float G(const Vector3f &wo, const Vector3f &wi) const {
         return 1 / (1 + Lambda(wo) + Lambda(wi));
     }
