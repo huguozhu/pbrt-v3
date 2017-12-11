@@ -45,6 +45,7 @@
 namespace pbrt {
 
 // PlasticMaterial Declarations
+// 塑料材质：漫反射和光泽散射和混合
 class PlasticMaterial : public Material {
   public:
     // PlasticMaterial Public Methods
@@ -64,6 +65,8 @@ class PlasticMaterial : public Material {
 
   private:
     // PlasticMaterial Private Data
+	// Kd:漫反射量（Lambertian反射）
+	// Ks:光泽镜面反射量（MicrofacetReflection）
     std::shared_ptr<Texture<Spectrum>> Kd, Ks;
     std::shared_ptr<Texture<Float>> roughness, bumpMap;
     const bool remapRoughness;

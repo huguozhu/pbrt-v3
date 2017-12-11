@@ -45,6 +45,9 @@
 namespace pbrt {
 
 // MatteMaterial Declarations
+// 粗糙材质：描述漫反射表面
+// 在材质面的某点上，如果sigma==0，则创建Lambertian反射;
+// 否则创建OrenNayar反射模型(sigma就是OrenNayar的一个参数，具体见OrenNayar实现)
 class MatteMaterial : public Material {
   public:
     // MatteMaterial Public Methods
@@ -58,7 +61,10 @@ class MatteMaterial : public Material {
 
   private:
     // MatteMaterial Private Data
+	// Kd-->表面的颜色
     std::shared_ptr<Texture<Spectrum>> Kd;
+	// 标量粗糙度sigma==0-->Lambertian反射， 否则OrenNayar反射
+	// bumpMap-->该点的切线坐标系中法线偏移
     std::shared_ptr<Texture<Float>> sigma, bumpMap;
 };
 

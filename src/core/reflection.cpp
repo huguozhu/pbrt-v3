@@ -680,7 +680,7 @@ Spectrum BSDF::f(const Vector3f &woW, const Vector3f &wiW,
         if (bxdfs[i]->MatchesFlags(flags) &&
             ((reflect && (bxdfs[i]->type & BSDF_REFLECTION)) ||
              (!reflect && (bxdfs[i]->type & BSDF_TRANSMISSION))))
-            f += bxdfs[i]->f(wo, wi);
+            f += bxdfs[i]->f(wo, wi);		// ¸÷¸öBSDFµþ¼Ó
     return f;
 }
 

@@ -57,6 +57,7 @@ class Material {
                                             TransportMode mode,
                                             bool allowMultipleLobes) const = 0;
     virtual ~Material();
+	// 计算切线坐标系的法线
     static void Bump(const std::shared_ptr<Texture<Float>> &d,
                      SurfaceInteraction *si);
 };
