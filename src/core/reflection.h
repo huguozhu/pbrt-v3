@@ -400,7 +400,7 @@ class LambertianReflection : public BxDF {
     // LambertianReflection Public Methods
     LambertianReflection(const Spectrum &R)
         : BxDF(BxDFType(BSDF_REFLECTION | BSDF_DIFFUSE)), R(R) {}
-	// Lambertion的BRDF等于常亮：R/π
+	// Lambertion的BRDF等于常量：R/π
     Spectrum f(const Vector3f &wo, const Vector3f &wi) const;
     Spectrum rho(const Vector3f &, int, const Point2f *) const { return R; }
     Spectrum rho(int, const Point2f *, const Point2f *) const { return R; }
