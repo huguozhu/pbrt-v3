@@ -282,11 +282,7 @@ class Fresnel {
   public:
     // Fresnel Interface
     virtual ~Fresnel();
-<<<<<<< .mine
 	// 返回入射余弦值为cosI时，介质的反射率
-=======
-	// 返回材质的菲涅尔反射率
->>>>>>> .theirs
     virtual Spectrum Evaluate(Float cosI) const = 0;
 	// 信息描述
     virtual std::string ToString() const = 0;
