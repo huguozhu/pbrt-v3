@@ -225,8 +225,8 @@ class BxDF {
 	// 输入：出射向量wo和入射向量wi
 	// 输出: 对应的BRDF/BTDF
     virtual Spectrum f(const Vector3f &wo, const Vector3f &wi) const = 0;
-	// 不是所有的BxDF都可以求值，例如对于镜子、玻璃、水面等从一个入射方向将光线散射至单一出射方向，
-	// 可使用delta分布来描述这种除了出射方向其他都是0的情况，即使用Sample_f()
+	// 不是所有的BxDF都可以求值，例如对于镜子、玻璃、水面等从一个入射方向将光线散射至单一出射方向（见SpecularReflection类）
+	// 可使用delta分布来描述这种除了出射方向其他都是0的情况，即使用Sample_f()（需使用Monte Carlo算法）
 	// 输入：出射向量wo，采样点坐标sample
 	// 输出：入射向量wi，用MentoCarlo算法计算出的采样点sample的pdf值
     virtual Spectrum Sample_f(const Vector3f &wo, Vector3f *wi,
@@ -282,8 +282,13 @@ class Fresnel {
   public:
     // Fresnel Interface
     virtual ~Fresnel();
+<<<<<<< .mine
 	// 返回入射余弦值为cosI时，介质的反射率
+=======
+	// 返回材质的菲涅尔反射率
+>>>>>>> .theirs
     virtual Spectrum Evaluate(Float cosI) const = 0;
+	// 信息描述
     virtual std::string ToString() const = 0;
 };
 
@@ -302,7 +307,7 @@ public:
     std::string ToString() const;
 
 private:
-	// etaI、etaT：两边介质的折射率
+	// etaI、etaT：输入、输出的两边介质的折射率
 	// K：导体的吸收系数
     Spectrum etaI, etaT, k;
 };
@@ -315,7 +320,7 @@ public:
     std::string ToString() const;
 
 private:
-	// etaI、etaT：两边介质的折射率
+	// etaI、etaT：输入、输出的两边介质的折射率
     Float etaI, etaT;
 };
 // 全部反射
@@ -324,7 +329,7 @@ class FresnelNoOp : public Fresnel {
     Spectrum Evaluate(Float) const { return Spectrum(1.); }
     std::string ToString() const { return "[ FresnelNoOp ]"; }
 };
-
+// 镜面发射：使用狄拉克δ分布（Dirac delta distribution）:在除了0以外的所有的点都为0，在整个定义域中的积分为1。
 class SpecularReflection : public BxDF {
   public:
     // SpecularReflection Public Methods
@@ -332,6 +337,7 @@ class SpecularReflection : public BxDF {
         : BxDF(BxDFType(BSDF_REFLECTION | BSDF_SPECULAR)),
           R(R),
           fresnel(fresnel) {}
+	// 镜面发射在几乎所有的发射方向都为0，除了出射角等于入射角的方向
     Spectrum f(const Vector3f &wo, const Vector3f &wi) const {
         return Spectrum(0.f);
     }
@@ -345,7 +351,7 @@ class SpecularReflection : public BxDF {
     const Spectrum R;			// 缩放反射颜色
     const Fresnel *fresnel;		// 介质的菲涅耳导体/绝缘体（FresnelConductor/FresnelDielectric）属性
 };
-
+// 镜面投射
 class SpecularTransmission : public BxDF {
   public:
     // SpecularTransmission Public Methods
@@ -376,7 +382,7 @@ class SpecularTransmission : public BxDF {
     const FresnelDielectric fresnel;
     const TransportMode mode;
 };
-
+// 菲涅尔镜面：既包括镜面反射又包括镜面折射
 class FresnelSpecular : public BxDF {
   public:
     // FresnelSpecular Public Methods
@@ -409,6 +415,7 @@ class LambertianReflection : public BxDF {
     // LambertianReflection Public Methods
     LambertianReflection(const Spectrum &R)
         : BxDF(BxDFType(BSDF_REFLECTION | BSDF_DIFFUSE)), R(R) {}
+	// Lambertion的BRDF等于常量：R/π
     Spectrum f(const Vector3f &wo, const Vector3f &wi) const;
     Spectrum rho(const Vector3f &, int, const Point2f *) const { return R; }
     Spectrum rho(int, const Point2f *, const Point2f *) const { return R; }
@@ -455,7 +462,7 @@ class OrenNayar : public BxDF {
     const Spectrum R;
     Float A, B;
 };
-
+// 微表面反射包括三种几个效果：Masking、Shadowing、Interreflection
 class MicrofacetReflection : public BxDF {
   public:
     // MicrofacetReflection Public Methods

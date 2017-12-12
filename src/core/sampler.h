@@ -85,7 +85,7 @@ class Sampler {
     // Sampler Private Data
     size_t array1DOffset, array2DOffset;
 };
-
+// 一个像素的采样
 class PixelSampler : public Sampler {
   public:
     // PixelSampler Public Methods
@@ -97,8 +97,8 @@ class PixelSampler : public Sampler {
 
   protected:
     // PixelSampler Protected Data
-    std::vector<std::vector<Float>> samples1D;
-    std::vector<std::vector<Point2f>> samples2D;
+    std::vector<std::vector<Float>> samples1D;		// 一个像素中的所有采样值（float），外部的vector表示。。。
+    std::vector<std::vector<Point2f>> samples2D;	// sampler1D对应的采样值在像素中的二维坐标
     int current1DDimension = 0, current2DDimension = 0;
     RNG rng;
 };
