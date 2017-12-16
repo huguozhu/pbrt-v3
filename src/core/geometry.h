@@ -892,6 +892,7 @@ class Ray {
 
 // 带微分信息的射线，相对于射线，多了两条发射位置在x轴方向和y轴方向加1的射线
 // 作用：1.纹理抗锯齿		2.可以计算投影到image的一小块场景(scene),用于输出高质量的结果
+// 附带两条辅助光线，分别在水平方向和垂直方向相对相机光线偏移一个像素采样
 class RayDifferential : public Ray {
   public:
     // RayDifferential Public Methods
@@ -1461,12 +1462,12 @@ inline Point3f OffsetRayOrigin(const Point3f &p, const Vector3f &pError,
     }
     return po;
 }
-
+// 球坐标系-->3D空间坐标系
 inline Vector3f SphericalDirection(Float sinTheta, Float cosTheta, Float phi) {
     return Vector3f(sinTheta * std::cos(phi), sinTheta * std::sin(phi),
                     cosTheta);
 }
-
+// 返回球坐标系x-y-z定义的坐标系的向量
 inline Vector3f SphericalDirection(Float sinTheta, Float cosTheta, Float phi,
                                    const Vector3f &x, const Vector3f &y,
                                    const Vector3f &z) {

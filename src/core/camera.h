@@ -55,7 +55,7 @@ class Camera {
     virtual ~Camera();
 	// 针对既定图像采样生成一条光线
     virtual Float GenerateRay(const CameraSample &sample, Ray *ray) const = 0;
-	// 生成一条光线，同事计算在图像平面x、y方向上偏离一个像素的光线。
+	// 生成一条光线，同时生成在相对平面x、y方向上偏离一个像素的光线。
     virtual Float GenerateRayDifferential(const CameraSample &sample,
                                           RayDifferential *rd) const;
     virtual Spectrum We(const Ray &ray, Point2f *pRaster2 = nullptr) const;
