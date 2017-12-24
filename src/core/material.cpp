@@ -49,6 +49,7 @@ void Material::Bump(const std::shared_ptr<Texture<Float>> &d,
     SurfaceInteraction siEval = *si;
 
     // Shift _siEval_ _du_ in the $u$ direction
+	// 选取的偏移量DeltaU和DeltaV约为图像空间像素采样的一般
     Float du = .5f * (std::abs(si->dudx) + std::abs(si->dudy));
     // The most common reason for du to be zero is for ray that start from
     // light sources, where no differentials are available. In this case,
@@ -62,6 +63,7 @@ void Material::Bump(const std::shared_ptr<Texture<Float>> &d,
     Float uDisplace = d->Evaluate(siEval);
 
     // Shift _siEval_ _dv_ in the $v$ direction
+	// 选取的偏移量DeltaU和DeltaV约为图像空间像素采样的一般
     Float dv = .5f * (std::abs(si->dvdx) + std::abs(si->dvdy));
     if (dv == 0) dv = .0005f;
     siEval.p = si->p + dv * si->shading.dpdv;

@@ -262,7 +262,7 @@ inline EFloat abs(EFloat fe) {
         return r;
     }
 }
-
+// 求二元一次方程Ax2+Bx+C=0的解：t0 t1
 inline bool Quadratic(EFloat A, EFloat B, EFloat C, EFloat *t0, EFloat *t1);
 inline bool Quadratic(EFloat A, EFloat B, EFloat C, EFloat *t0, EFloat *t1) {
     // Find quadratic discriminant

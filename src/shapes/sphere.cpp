@@ -105,10 +105,11 @@ bool Sphere::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
     }
 
     // Find parametric representation of sphere hit
+	// 计算球体u、v坐标的方法
     Float u = phi / phiMax;
     Float theta = std::acos(Clamp(pHit.z / radius, -1, 1));
     Float v = (theta - thetaMin) / (thetaMax - thetaMin);
-
+	
     // Compute sphere $\dpdu$ and $\dpdv$
     Float zRadius = std::sqrt(pHit.x * pHit.x + pHit.y * pHit.y);
     Float invZRadius = 1 / zRadius;
