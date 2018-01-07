@@ -49,6 +49,7 @@
 namespace pbrt {
 
 // GonioPhotometricLight Declarations
+// ≤‚Ω«π‚∂»Õºπ‚’’
 class GonioPhotometricLight : public Light {
   public:
     // GonioPhotometricLight Public Methods

@@ -46,6 +46,7 @@
 namespace pbrt {
 
 // BilerpTexture Declarations
+// Ë«ÏßÐÔ²åÖµ
 template <typename T>
 class BilerpTexture : public Texture<T> {
   public:

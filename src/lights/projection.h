@@ -47,6 +47,7 @@
 namespace pbrt {
 
 // ProjectionLight Declarations
+// Œ∆¿ÌÕ∂…‰π‚
 class ProjectionLight : public Light {
   public:
     // ProjectionLight Public Methods

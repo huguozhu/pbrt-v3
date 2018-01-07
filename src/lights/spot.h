@@ -46,6 +46,7 @@
 namespace pbrt {
 
 // SpotLight Declarations
+// ¾Û¹âµÆ
 class SpotLight : public Light {
   public:
     // SpotLight Public Methods

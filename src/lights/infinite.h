@@ -49,6 +49,8 @@
 namespace pbrt {
 
 // InfiniteAreaLight Declarations
+// 无穷远区域光照：将光源视为巨大的球体，并从各个方向向当前场景投射光线。
+// 重要应用：环境光照
 class InfiniteAreaLight : public Light {
   public:
     // InfiniteAreaLight Public Methods

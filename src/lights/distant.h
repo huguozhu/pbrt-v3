@@ -47,6 +47,7 @@
 namespace pbrt {
 
 // DistantLight Declarations
+// Æ½ÐÐ¹â
 class DistantLight : public Light {
   public:
     // DistantLight Public Methods

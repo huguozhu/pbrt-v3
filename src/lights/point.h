@@ -46,6 +46,7 @@
 namespace pbrt {
 
 // PointLight Declarations
+// µ„π‚‘¥
 class PointLight : public Light {
   public:
     // PointLight Public Methods

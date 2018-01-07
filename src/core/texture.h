@@ -64,6 +64,7 @@ class UVMapping2D : public TextureMapping2D {
                 Vector2f *dstdy) const;
 
   private:
+	// 用户输入的对数据值进行缩放和偏移
     const Float su, sv, du, dv;
 };
 
@@ -76,6 +77,7 @@ class SphericalMapping2D : public TextureMapping2D {
                 Vector2f *dstdy) const;
 
   private:
+	// 将圆上坐标p转换为圆的st纹理坐标
     Point2f sphere(const Point3f &P) const;
     const Transform WorldToTexture;
 };

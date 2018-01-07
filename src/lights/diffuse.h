@@ -46,6 +46,7 @@
 namespace pbrt {
 
 // DiffuseAreaLight Declarations
+// shape的漫反射（区域光照）
 class DiffuseAreaLight : public AreaLight {
   public:
     // DiffuseAreaLight Public Methods
