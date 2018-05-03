@@ -24,15 +24,22 @@ if(NOT IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/ext/openexr/OpenEXR")
     "by running \"git submodule update --init --recursive\"")
 endif()
 
-if(NOT IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/ext/glog")
+if(NOT IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/ext/glog/cmake")
   message(FATAL_ERROR "The glog submodule directory is missing! "
     "You probably did not clone the project with --recursive, or first checked out "
     "pbrt before it was added. It is possible to recover by running "
     "\"git submodule update --init --recursive\"")
 endif()
 
-if(NOT IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/ext/ptex")
+if(NOT IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/ext/ptex/src")
   message(FATAL_ERROR "The ptex submodule directory is missing! "
+    "You probably did not clone the project with --recursive, or first checked out "
+    "pbrt before it was added. It is possible to recover by running "
+    "\"git submodule update --init --recursive\"")
+endif()
+
+if(NOT IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/ext/zlib/doc")
+  message(FATAL_ERROR "The zlib submodule directory is missing! "
     "You probably did not clone the project with --recursive, or first checked out "
     "pbrt before it was added. It is possible to recover by running "
     "\"git submodule update --init --recursive\"")
@@ -91,11 +98,6 @@ ENDIF ()
 CHECK_INCLUDE_FILES ( memory.h HAVE_MEMORY_H )
 IF ( HAVE_MEMORY_H )
   ADD_DEFINITIONS ( -D PBRT_HAVE_MEMORY_H )
-ENDIF ()
-
-CHECK_INCLUDE_FILES ( unistd.h HAVE_UNISTD_H )
-IF ( NOT HAVE_UNISTD_H )
-  ADD_DEFINITIONS ( -D YY_NO_UNISTD_H )
 ENDIF ()
 
 ###########################################################################
@@ -282,8 +284,7 @@ IF(NOT ZLIB_FOUND)
   ADD_SUBDIRECTORY(src/ext/zlib)
 
   SET(ZLIB_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/ext/zlib")
-  SET(ZLIB_LIBRARY "${CMAKE_CURRENT_BINARY_DIR}/src/ext/zlib/$<CONFIGURATION>/zlibstatic.lib")
-  SET(ZLIB_LIBRARIES zlibstatic)
+  SET(ZLIB_LIBRARY zlibstatic)
   SET_PROPERTY(TARGET zlibstatic PROPERTY FOLDER "dependencies")
   INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIR} "${CMAKE_CURRENT_BINARY_DIR}/src/ext/zlib")
 ENDIF()
@@ -310,7 +311,7 @@ INCLUDE_DIRECTORIES (
   ${CMAKE_BINARY_DIR}/src/ext/openexr/OpenEXR/config
 )
 IF(WIN32)
-  SET(OPENEXR_LIBS IlmImf Imath Half ${ZLIB_LIBRARIES})
+  SET(OPENEXR_LIBS IlmImf Imath Half ${ZLIB_LIBRARY})
 ELSE()
   SET(OPENEXR_LIBS IlmImf Imath Half)
 ENDIF()
@@ -335,6 +336,7 @@ IF ( CMAKE_BUILD_TYPE )
   STRING ( TOLOWER ${CMAKE_BUILD_TYPE} LOWER_BUILD_TYPE )
   SET ( ENV{FLAVOR} ${LOWER_BUILD_TYPE} )
 ENDIF ()
+SET(PTEX_BUILD_SHARED_LIBS OFF CACHE BOOL " " FORCE)
 
 SET(CMAKE_MACOSX_RPATH 1)
 IF ( WIN32 )

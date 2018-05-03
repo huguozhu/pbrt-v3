@@ -34,6 +34,7 @@
 #include "parser.h"
 #include "api.h"
 #include "fileutil.h"
+#include "memory.h"
 #include "paramset.h"
 #include "stats.h"
 
@@ -46,7 +47,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#endif  // PBRT_HAVE_MMAP
+#elif defined(PBRT_IS_WINDOWS)
+#include <windows.h>  // Windows file mapping API
+#endif
 #include <functional>
 #include <iostream>
 #include <memory>
@@ -68,6 +71,7 @@ static char decodeEscaped(int ch) {
     switch (ch) {
     case EOF:
         Error("premature EOF after character escape '\\'");
+        exit(1);
     case 'b':
         return '\b';
     case 'f':
@@ -86,6 +90,7 @@ static char decodeEscaped(int ch) {
         return '\"';
     default:
         Error("unexpected escaped character \"%c\"", ch);
+        exit(1);
     }
     return 0;  // NOTREACHED
 }
@@ -129,8 +134,49 @@ std::unique_ptr<Tokenizer> Tokenizer::CreateFromFile(
     // return std::make_unique<Tokenizer>(ptr, len);
     return std::unique_ptr<Tokenizer>(
         new Tokenizer(ptr, len, filename, std::move(errorCallback)));
+#elif defined(PBRT_IS_WINDOWS)
+    auto errorReportLambda = [&errorCallback,
+                              &filename]() -> std::unique_ptr<Tokenizer> {
+        LPSTR messageBuffer = nullptr;
+        FormatMessageA(
+            FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
+                FORMAT_MESSAGE_IGNORE_INSERTS,
+            NULL, ::GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+            (LPSTR)&messageBuffer, 0, NULL);
+
+        errorCallback(
+            StringPrintf("%s: %s", filename.c_str(), messageBuffer).c_str());
+
+        LocalFree(messageBuffer);
+        return nullptr;
+    };
+
+    HANDLE fileHandle =
+        CreateFileA(filename.c_str(), GENERIC_READ, FILE_SHARE_READ, 0,
+                    OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+    if (!fileHandle) {
+        return errorReportLambda();
+    }
+
+    size_t len = GetFileSize(fileHandle, 0);
+
+    HANDLE mapping = CreateFileMapping(fileHandle, 0, PAGE_READONLY, 0, 0, 0);
+    CloseHandle(fileHandle);
+    if (mapping == 0) {
+        return errorReportLambda();
+    }
+
+    LPVOID ptr = MapViewOfFile(mapping, FILE_MAP_READ, 0, 0, 0);
+    CloseHandle(mapping);
+    if (ptr == nullptr) {
+        return errorReportLambda();
+    }
+
+    std::string str(static_cast<const char *>(ptr), len);
+
+    return std::unique_ptr<Tokenizer>(
+        new Tokenizer(ptr, len, filename, std::move(errorCallback)));
 #else
-    // TODO: it would be nice to also memory map the file if this is Windows...
     FILE *f = fopen(filename.c_str(), "r");
     if (!f) {
         errorCallback(
@@ -142,6 +188,7 @@ std::unique_ptr<Tokenizer> Tokenizer::CreateFromFile(
     int ch;
     while ((ch = fgetc(f)) != EOF) str.push_back(char(ch));
     fclose(f);
+
     // std::make_unique...
     return std::unique_ptr<Tokenizer>(
         new Tokenizer(std::move(str), std::move(errorCallback)));
@@ -165,7 +212,7 @@ Tokenizer::Tokenizer(std::string str,
     tokenizerMemory += contents.size();
 }
 
-#ifdef PBRT_HAVE_MMAP
+#if defined(PBRT_HAVE_MMAP) || defined(PBRT_IS_WINDOWS)
 Tokenizer::Tokenizer(void *ptr, size_t len, std::string filename,
                      std::function<void(const char *)> errorCallback)
     : loc(filename),
@@ -182,17 +229,25 @@ Tokenizer::~Tokenizer() {
     if (unmapPtr && unmapLength > 0)
         if (munmap(unmapPtr, unmapLength) != 0)
             errorCallback(StringPrintf("munmap: %s", strerror(errno)).c_str());
+#elif defined(PBRT_IS_WINDOWS)
+    if (unmapPtr) {
+        if (UnmapViewOfFile(unmapPtr) == 0) {
+            LPSTR messageBuffer = nullptr;
+            FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER |
+                               FORMAT_MESSAGE_FROM_SYSTEM |
+                               FORMAT_MESSAGE_IGNORE_INSERTS,
+                           NULL, ::GetLastError(),
+                           MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                           (LPSTR)&messageBuffer, 0, NULL);
+            errorCallback(
+                StringPrintf("UnmapViewOfFile: %s", messageBuffer).c_str());
+            LocalFree(messageBuffer);
+        }
+    }
 #endif
 }
 
 string_view Tokenizer::Next() {
-    if (!ungetString.empty()) {
-        // return std::exchange(ungetString, {});
-        string_view ret;
-        std::swap(ret, ungetString);
-        return ret;
-    }
-
     while (true) {
         const char *tokenStart = pos;
         int ch = getChar();
@@ -240,7 +295,7 @@ string_view Tokenizer::Next() {
         } else if (ch == '#') {
             // comment: scan to EOL (or EOF)
             while ((ch = getChar()) != EOF) {
-                if (ch == '\n') {
+                if (ch == '\n' || ch == '\r') {
                     ungetChar();
                     break;
                 }
@@ -716,42 +771,43 @@ ParamSet parseParams(Next nextToken, Unget ungetToken, MemoryArena &arena,
 extern int catIndentCount;
 
 // Parsing Global Interface
-void ParseFile(std::string filename) {
-    if (filename != "-")
-        SetSearchDirectory(DirectoryContaining(filename));
-
-    auto tokError = [](const char *msg) { Error("%s", msg); };
-    std::unique_ptr<Tokenizer> t =
-        Tokenizer::CreateFromFile(filename, tokError);
-    if (!t)
-        return;
-
+static void parse(std::unique_ptr<Tokenizer> t) {
     std::vector<std::unique_ptr<Tokenizer>> fileStack;
     fileStack.push_back(std::move(t));
     parserLoc = &fileStack.back()->loc;
 
-    // nextToken is a little helper functino that handles the file stack,
+    bool ungetTokenSet = false;
+    std::string ungetTokenValue;
+
+    // nextToken is a little helper function that handles the file stack,
     // returning the next token from the current file until reaching EOF,
     // at which point it switches to the next file (if any).
     std::function<string_view(int)> nextToken;
-    nextToken = [&fileStack, &nextToken, &tokError](int flags) -> string_view {
+    nextToken = [&](int flags) -> string_view {
+        if (ungetTokenSet) {
+            ungetTokenSet = false;
+            return string_view(ungetTokenValue.data(), ungetTokenValue.size());
+        }
+
+        if (fileStack.empty()) {
+            if (flags & TokenRequired) Error("premature EOF");
+            parserLoc = nullptr;
+            return {};
+        }
+
         string_view tok = fileStack.back()->Next();
 
         if (tok.empty()) {
             // We've reached EOF in the current file. Anything more to parse?
             fileStack.pop_back();
-            if (fileStack.empty()) {
-                if (flags & TokenRequired) Error("premature EOF");
-                parserLoc = nullptr;
-                return {};
-            }
-            parserLoc = &fileStack.back()->loc;
+            if (!fileStack.empty()) parserLoc = &fileStack.back()->loc;
             return nextToken(flags);
         } else if (tok == "Include") {
             // Switch to the given file.
             std::string filename =
                 toString(dequoteString(nextToken(TokenRequired)));
             filename = AbsolutePath(ResolveFilename(filename));
+            auto tokError = [](const char *msg) { Error("%s", msg); };
             std::unique_ptr<Tokenizer> tinc =
                 Tokenizer::CreateFromFile(filename, tokError);
             if (tinc) {
@@ -770,8 +826,10 @@ void ParseFile(std::string filename) {
             return tok;
     };
 
-    auto ungetToken = [&fileStack](string_view s) {
-        fileStack.back()->Unget(s);
+    auto ungetToken = [&](string_view s) {
+        CHECK(!ungetTokenSet);
+        ungetTokenValue = std::string(s.data(), s.size());
+        ungetTokenSet = true;
     };
 
     MemoryArena arena;
@@ -1011,6 +1069,24 @@ void ParseFile(std::string filename) {
             syntaxError(tok);
         }
     }
+}
+
+void pbrtParseFile(std::string filename) {
+    if (filename != "-") SetSearchDirectory(DirectoryContaining(filename));
+
+    auto tokError = [](const char *msg) { Error("%s", msg); };
+    std::unique_ptr<Tokenizer> t =
+        Tokenizer::CreateFromFile(filename, tokError);
+    if (!t) return;
+    parse(std::move(t));
+}
+
+void pbrtParseString(std::string str) {
+    auto tokError = [](const char *msg) { Error("%s", msg); };
+    std::unique_ptr<Tokenizer> t =
+        Tokenizer::CreateFromString(std::move(str), tokError);
+    if (!t) return;
+    parse(std::move(t));
 }
 
 }  // namespace pbrt
