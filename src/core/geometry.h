@@ -893,6 +893,7 @@ class Ray {
 // 带微分信息的射线，相对于射线，多了两条发射位置在x轴方向和y轴方向加1的射线
 // 作用：1.纹理抗锯齿		2.可以计算投影到image的一小块场景(scene),用于输出高质量的结果
 // 附带两条辅助光线，分别在水平方向和垂直方向相对相机光线偏移一个像素采样
+// 在光线路径上的每个顶点处， 光线微分与表面的交点同中心光线交点的距离用来近似表示顶点的足迹（footprint）,以此对纹理进行过滤。
 class RayDifferential : public Ray {
   public:
     // RayDifferential Public Methods
