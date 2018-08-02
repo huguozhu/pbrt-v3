@@ -49,6 +49,8 @@
 
 namespace pbrt {
 
+// MTL:Metropolis Light Transport：梅特波利斯光照传输
+
 // MLTSampler Declarations
 class MLTSampler : public Sampler {
   public:
