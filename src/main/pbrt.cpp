@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
         printf("*** DEBUG BUILD ***\n");
 #endif // !NDEBUG
         printf(
-            "Copyright (c)1998-2016 Matt Pharr, Greg Humphreys, and Wenzel "
+            "Copyright (c)1998-2018 Matt Pharr, Greg Humphreys, and Wenzel "
             "Jakob.\n");
         printf(
             "The source code to pbrt (but *not* the book contents) is covered "
@@ -157,8 +157,7 @@ int main(int argc, char *argv[]) {
     } else {
         // Parse scene from input files
         for (const std::string &f : filenames)
-            if (!ParseFile(f))
-                Error("Couldn't open scene file \"%s\"", f.c_str());
+            ParseFile(f);
     }
     pbrtCleanup();
     return 0;
