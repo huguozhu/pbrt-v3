@@ -47,6 +47,7 @@
 namespace pbrt {
 
 // SPPM Declarations
+// 随机渐进光子映射：Stochastic Progressive Photon Mapping
 class SPPMIntegrator : public Integrator {
   public:
     // SPPMIntegrator Public Methods

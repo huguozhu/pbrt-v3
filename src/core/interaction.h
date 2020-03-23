@@ -158,7 +158,10 @@ class SurfaceInteraction : public Interaction {
     const Primitive *primitive = nullptr;
     BSDF *bsdf = nullptr;
     BSSRDF *bssrdf = nullptr;
-    mutable Vector3f dpdx, dpdy;
+	// 在x、y轴差一个像素，在交点平面的位置微分
+	mutable Vector3f dpdx, dpdy;
+	// 在x、y轴差一个像素，在交点平面的uv坐标微分
+	// 这个值是重点，用于决定怎样采样来抗锯齿
     mutable Float dudx = 0, dvdx = 0, dudy = 0, dvdy = 0;
 
     // Added after book publication. Shapes can optionally provide a face

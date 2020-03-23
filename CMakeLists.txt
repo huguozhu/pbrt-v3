@@ -9,6 +9,18 @@ SET (CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 
 PROJECT ( PBRT-V3 )
 
+OPTION(PBRT_FLOAT_AS_DOUBLE "Use 64-bit floats" OFF)
+
+IF (PBRT_FLOAT_AS_DOUBLE)
+  ADD_DEFINITIONS ( -D PBRT_FLOAT_AS_DOUBLE )
+ENDIF()
+
+OPTION(PBRT_SAMPLED_SPECTRUM "Use SampledSpectrum rather than RGBSpectrum" OFF)
+
+IF (PBRT_SAMPLED_SPECTRUM)
+  ADD_DEFINITIONS ( -D PBRT_SAMPLED_SPECTRUM )
+ENDIF()
+
 ENABLE_TESTING()
 
 if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -24,16 +36,23 @@ if(NOT IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/ext/openexr/OpenEXR")
     "by running \"git submodule update --init --recursive\"")
 endif()
 
-if(NOT IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/ext/glog")
+if(NOT IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/ext/glog/cmake")
   message(FATAL_ERROR "The glog submodule directory is missing! "
-    "You probably did not clone the project with --recursive, or first checked out "
+    "You probably did not clone the project with --recursive, or you first checked out "
     "pbrt before it was added. It is possible to recover by running "
     "\"git submodule update --init --recursive\"")
 endif()
 
-if(NOT IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/ext/ptex")
+if(NOT IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/ext/ptex/src")
   message(FATAL_ERROR "The ptex submodule directory is missing! "
-    "You probably did not clone the project with --recursive, or first checked out "
+    "You probably did not clone the project with --recursive, or you first checked out "
+    "pbrt before it was added. It is possible to recover by running "
+    "\"git submodule update --init --recursive\"")
+endif()
+
+if(NOT IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/ext/zlib/doc")
+  message(FATAL_ERROR "The zlib submodule directory is missing! "
+    "You probably did not clone the project with --recursive, or you first checked out "
     "pbrt before it was added. It is possible to recover by running "
     "\"git submodule update --init --recursive\"")
 endif()
@@ -44,6 +63,8 @@ FIND_PACKAGE ( Threads )
 IF(CMAKE_BUILD_TYPE MATCHES RELEASE)
   ADD_DEFINITIONS (-DNDEBUG)
 ENDIF()
+
+SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON)
 
 ###########################################################################
 # Annoying compiler-specific details
@@ -91,11 +112,6 @@ ENDIF ()
 CHECK_INCLUDE_FILES ( memory.h HAVE_MEMORY_H )
 IF ( HAVE_MEMORY_H )
   ADD_DEFINITIONS ( -D PBRT_HAVE_MEMORY_H )
-ENDIF ()
-
-CHECK_INCLUDE_FILES ( unistd.h HAVE_UNISTD_H )
-IF ( NOT HAVE_UNISTD_H )
-  ADD_DEFINITIONS ( -D YY_NO_UNISTD_H )
 ENDIF ()
 
 ###########################################################################
@@ -282,9 +298,8 @@ IF(NOT ZLIB_FOUND)
   ADD_SUBDIRECTORY(src/ext/zlib)
 
   SET(ZLIB_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/ext/zlib")
-  SET(ZLIB_LIBRARY "${CMAKE_CURRENT_BINARY_DIR}/src/ext/zlib/$<CONFIGURATION>/zlibstatic.lib")
-  SET(ZLIB_LIBRARIES zlibstatic)
-  SET_PROPERTY(TARGET zlibstatic PROPERTY FOLDER "dependencies")
+  SET(ZLIB_LIBRARY zlibstatic)
+  SET_PROPERTY(TARGET zlibstatic PROPERTY FOLDER "ext")
   INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIR} "${CMAKE_CURRENT_BINARY_DIR}/src/ext/zlib")
 ENDIF()
 INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIRS})
@@ -299,7 +314,7 @@ SET(ILMBASE_BUILD_SHARED_LIBS    OFF CACHE BOOL " " FORCE)
 
 ADD_SUBDIRECTORY(src/ext/openexr)
 
-SET_PROPERTY(TARGET IexMath eLut toFloat b44ExpLogTable dwaLookups CopyIlmBaseLibs IlmThread Half Iex Imath IlmImf PROPERTY FOLDER "dependencies")
+SET_PROPERTY(TARGET IexMath eLut toFloat b44ExpLogTable dwaLookups IlmThread Half Iex Imath IlmImf PROPERTY FOLDER "ext")
 
 INCLUDE_DIRECTORIES (
   src/ext/openexr/IlmBase/Imath
@@ -310,7 +325,7 @@ INCLUDE_DIRECTORIES (
   ${CMAKE_BINARY_DIR}/src/ext/openexr/OpenEXR/config
 )
 IF(WIN32)
-  SET(OPENEXR_LIBS IlmImf Imath Half ${ZLIB_LIBRARIES})
+  SET(OPENEXR_LIBS IlmImf Imath Half ${ZLIB_LIBRARY})
 ELSE()
   SET(OPENEXR_LIBS IlmImf Imath Half)
 ENDIF()
@@ -320,8 +335,11 @@ ENDIF()
 
 SET(WITH_GFLAGS OFF CACHE BOOL "Use gflags")
 SET(BUILD_SHARED_LIBS OFF CACHE BOOL " " FORCE)
+IF(WIN32)
+  ADD_DEFINITIONS( -D GOOGLE_GLOG_DLL_DECL= )
+ENDIF()
 ADD_SUBDIRECTORY(src/ext/glog)
-SET_PROPERTY(TARGET glog PROPERTY FOLDER "dependencies")
+SET_PROPERTY(TARGET glog logging_unittest demangle_unittest utilities_unittest stl_logging_unittest PROPERTY FOLDER "ext")
 INCLUDE_DIRECTORIES (
   src/ext/glog/src
   ${CMAKE_BINARY_DIR}/src/ext/glog
@@ -335,13 +353,14 @@ IF ( CMAKE_BUILD_TYPE )
   STRING ( TOLOWER ${CMAKE_BUILD_TYPE} LOWER_BUILD_TYPE )
   SET ( ENV{FLAVOR} ${LOWER_BUILD_TYPE} )
 ENDIF ()
+SET(PTEX_BUILD_SHARED_LIBS OFF CACHE BOOL " " FORCE)
 
 SET(CMAKE_MACOSX_RPATH 1)
 IF ( WIN32 )
   ADD_DEFINITIONS ( /D PTEX_STATIC)
 ENDIF ()
 ADD_SUBDIRECTORY(src/ext/ptex)
-SET_PROPERTY(TARGET Ptex_static PROPERTY FOLDER "dependencies")
+SET_PROPERTY(TARGET Ptex_static ptxinfo halftest ftest rtest wtest PROPERTY FOLDER "ext")
 INCLUDE_DIRECTORIES ( src/ext/ptex/src/ptex )
 
 ###########################################################################

@@ -104,6 +104,8 @@ struct Distribution1D {
     }
 
     // Distribution1D Public Data
+	// CDF:cumulative distribution function-->累积分布函数
+	// PDF:probability density function-->概率密度函数
     std::vector<Float> func, cdf;
     Float funcInt;
 };

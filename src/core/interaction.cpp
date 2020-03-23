@@ -100,6 +100,7 @@ void SurfaceInteraction::ComputeScatteringFunctions(const RayDifferential &ray,
                                           allowMultipleLobes);
 }
 
+// 两条辅助光线和中心光线与物体的交点位于同一平面
 void SurfaceInteraction::ComputeDifferentials(
     const RayDifferential &ray) const {
     if (ray.hasDifferentials) {
@@ -110,14 +111,14 @@ void SurfaceInteraction::ComputeDifferentials(
 		// 原点o和方向d定义的光线与ax+by+cz+d=0平面相交，计算相交的时间系数tx：
 		// t = (-((a,b,c)·o)+d)/(a,b,c)·d
 		// 注：上面计算的d，在平面方程ax+by+cz+d=0中，表示-d
-        Float tx = 
-            -(Dot(n, Vector3f(ray.rxOrigin)) - d) / Dot(n, ray.rxDirection);
+        Float tx = -(Dot(n, Vector3f(ray.rxOrigin)) - d) / Dot(n, ray.rxDirection);
         if (std::isinf(tx) || std::isnan(tx)) goto fail;
         Point3f px = ray.rxOrigin + tx * ray.rxDirection;
-        Float ty =
-            -(Dot(n, Vector3f(ray.ryOrigin)) - d) / Dot(n, ray.ryDirection);
+
+        Float ty = -(Dot(n, Vector3f(ray.ryOrigin)) - d) / Dot(n, ray.ryDirection);
         if (std::isinf(ty) || std::isnan(ty)) goto fail;
         Point3f py = ray.ryOrigin + ty * ray.ryDirection;
+
         dpdx = px - p;	// px: 相对于相机x方向偏移一个像素的辅助光线，与垂直于主光线相交点的平面上的相交点坐标
         dpdy = py - p;	// px: 相对于相机y方向偏移一个像素的辅助光线，与垂直于主光线相交点的平面上的相交点坐标
 

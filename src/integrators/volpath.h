@@ -46,6 +46,7 @@
 namespace pbrt {
 
 // VolPathIntegrator Declarations
+// ÌåÂ·¾¶¸ú×Ù
 class VolPathIntegrator : public SamplerIntegrator {
   public:
     // VolPathIntegrator Public Methods

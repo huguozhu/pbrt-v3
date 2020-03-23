@@ -46,6 +46,7 @@
 namespace pbrt {
 
 // PathIntegrator Declarations
+// Â·¾¶¸ú×Ù
 class PathIntegrator : public SamplerIntegrator {
   public:
     // PathIntegrator Public Methods
