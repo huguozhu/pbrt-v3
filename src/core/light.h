@@ -107,7 +107,7 @@ class VisibilityTester {
     Interaction p0, p1;
 };
 
-// 区域光照
+// 面积光源
 class AreaLight : public Light {
   public:
     // AreaLight Interface
