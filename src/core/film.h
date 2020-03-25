@@ -120,6 +120,8 @@ class FilmTile {
           maxSampleLuminance(maxSampleLuminance) {
         pixels = std::vector<FilmTilePixel>(std::max(0, pixelBounds.Area()));
     }
+    // 已知：在采样位置pFilm上计算出采样值为L，采样权重为sample_weight，
+    // 将结果写入FilmTilePixel
     void AddSample(const Point2f &pFilm, Spectrum L,
                    Float sampleWeight = 1.) {
         ProfilePhase _(Prof::AddFilmSample);
