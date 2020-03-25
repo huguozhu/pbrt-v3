@@ -66,7 +66,7 @@ class Camera {
 
     // Camera Public Data
     AnimatedTransform CameraToWorld;			// 相机的运动轨迹
-    const Float shutterOpen, shutterClose;		// 快门打开时间和关闭时间
+    const Float shutterOpen, shutterClose;		// 快门打开时间和关闭时间,主要用于动态模糊(motion blur)
     Film *film;									// 底片
     const Medium *medium;						// 媒介
 };

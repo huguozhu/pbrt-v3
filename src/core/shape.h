@@ -56,7 +56,7 @@ class Shape {
     virtual ~Shape();
     virtual Bounds3f ObjectBound() const = 0;						// 在物体坐标系的包围盒
     virtual Bounds3f WorldBound() const;							// 在世界坐标系的包围盒
-    virtual bool Intersect(const Ray &ray, Float *tHit,				// 与射线ray是否相交，及相交的信息isect
+    virtual bool Intersect(const Ray &ray, Float *tHit,				// 判断是否与射线ray相交，并保存相交信息至isect
                            SurfaceInteraction *isect,
                            bool testAlphaTexture = true) const = 0;
     virtual bool IntersectP(const Ray &ray,							// 只单纯判断是否相交
