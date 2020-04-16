@@ -119,8 +119,8 @@ void SurfaceInteraction::ComputeDifferentials(
         if (std::isinf(ty) || std::isnan(ty)) goto fail;
         Point3f py = ray.ryOrigin + ty * ray.ryDirection;
 
-        dpdx = px - p;	// px: 相对于相机x方向偏移一个像素的辅助光线，与垂直于主光线相交点的平面上的相交点坐标
-        dpdy = py - p;	// px: 相对于相机y方向偏移一个像素的辅助光线，与垂直于主光线相交点的平面上的相交点坐标
+        dpdx = px - p;	// px: 相对于相机x方向偏移一个像素的辅助光线
+        dpdy = py - p;	// px: 相对于相机y方向偏移一个像素的辅助光线
 
         // Compute $(u,v)$ offsets at auxiliary points
 
