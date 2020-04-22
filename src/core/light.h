@@ -72,6 +72,10 @@ class Light {
 	virtual Spectrum Power() const = 0;
 	// 光源在使用前的预处理，大多数实现都是空值
     virtual void Preprocess(const Scene &scene) {}
+    // 辐射值可能是来源于无几何体的光源，例如InfiniteArea
+    // Light(从天空获取照明) Le:对于无几何体光源，从已知射线ray获取辐射值
+    // 为方便性，用光线辐射来表示平面交点的自发辐射（emitted radiance）
+    // 无面积光源都为0（例如Point、spot等），AreaLight不为零
     virtual Spectrum Le(const RayDifferential &r) const;
     virtual Float Pdf_Li(const Interaction &ref, const Vector3f &wi) const = 0;
     virtual Spectrum Sample_Le(const Point2f &u1, const Point2f &u2, Float time,

@@ -47,8 +47,12 @@ Spectrum WhittedIntegrator::Li(const RayDifferential &ray, const Scene &scene,
     Spectrum L(0.);
     // Find closest ray intersection or return background radiance
     SurfaceInteraction isect;
-    if (!scene.Intersect(ray, &isect)) {
-        for (const auto &light : scene.lights) L += light->Le(ray);
+    if (!scene.Intersect(ray, &isect)) 
+    {
+        // 如果光线没有遇到交点，则辐射值可能是来源于无几何体的光源，
+        // 例如InfiniteArea Light(从天空获取照明)，Light::Le从已知光线获取辐射值
+        for (const auto &light : scene.lights) 
+            L += light->Le(ray);
         return L;
     }
 
@@ -64,15 +68,17 @@ Spectrum WhittedIntegrator::Li(const RayDifferential &ray, const Scene &scene,
         return Li(isect.SpawnRay(ray.d), scene, sampler, arena, depth);
 
     // Compute emitted light if ray hit an area light source
+    // 如果光线遇到面积光，则计算面积光的自发光
     L += isect.Le(wo);
 
     // Add contribution of each light source
+    // 计算每个光源的贡献值
     for (const auto &light : scene.lights) {
         Vector3f wi;
         Float pdf;
         VisibilityTester visibility;
-        Spectrum Li =
-            light->Sample_Li(isect, sampler.Get2D(), &wi, &pdf, &visibility);
+        // Li:光源在交点的输入辐射度
+        Spectrum Li = light->Sample_Li(isect, sampler.Get2D(), &wi, &pdf, &visibility);
         if (Li.IsBlack() || pdf == 0) continue;
         Spectrum f = isect.bsdf->f(wo, wi);
         if (!f.IsBlack() && visibility.Unoccluded(scene))
@@ -80,6 +86,7 @@ Spectrum WhittedIntegrator::Li(const RayDifferential &ray, const Scene &scene,
     }
     if (depth + 1 < maxDepth) {
         // Trace rays for specular reflection and refraction
+        // 计算反射和折射，同时深度depth加1
         L += SpecularReflect(ray, isect, scene, sampler, arena, depth);
         L += SpecularTransmit(ray, isect, scene, sampler, arena, depth);
     }
