@@ -190,7 +190,7 @@ class BSDF {
     std::string ToString() const;
 
     // BSDF Public Data
-    const Float eta;	// 对于不透明物体无用
+    const Float eta;	// 边界上的相对折射率,对于不透明物体无用
 
   private:
     // BSDF Private Methods
