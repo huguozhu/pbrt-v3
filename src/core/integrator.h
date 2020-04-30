@@ -57,11 +57,12 @@ class Integrator {
     virtual ~Integrator();
     virtual void Render(const Scene &scene) = 0;
 };
-
+// 循环采样所有光源的采样点（每个光源采样次数由Light::nSamples指定）
 Spectrum UniformSampleAllLights(const Interaction &it, const Scene &scene,
                                 MemoryArena &arena, Sampler &sampler,
                                 const std::vector<int> &nLightSamples,
                                 bool handleMedia = false);
+// 随机选择一个光源的一个采样
 Spectrum UniformSampleOneLight(const Interaction &it, const Scene &scene,
                                MemoryArena &arena, Sampler &sampler,
                                bool handleMedia = false,
