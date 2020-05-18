@@ -124,6 +124,7 @@ inline Float InfiniteLightDensity(
 }
 
 // BDPT Declarations
+// Bi-directional Path Tracing Ë«ÏòÂ·¾¶×·×Ù
 class BDPTIntegrator : public Integrator {
   public:
     // BDPTIntegrator Public Methods

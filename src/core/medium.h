@@ -47,6 +47,7 @@
 namespace pbrt {
 
 // Media Declarations
+// 描述光在材质中如何散射
 class PhaseFunction {
   public:
     // PhaseFunction Interface
