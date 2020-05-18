@@ -733,6 +733,7 @@ Spectrum BSDF::Sample_f(const Vector3f &woWorld, Vector3f *wiWorld,
                       u[1]);
 
     // Sample chosen _BxDF_
+    // ²ÉÑùÑ¡ÔñBxDF
     Vector3f wi, wo = WorldToLocal(woWorld);
     if (wo.z == 0) return 0.;
     *pdf = 0;

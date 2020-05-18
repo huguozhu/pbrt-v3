@@ -355,6 +355,7 @@ Spectrum SamplerIntegrator::SpecularReflect(
     Spectrum f = isect.bsdf->Sample_f(wo, &wi, sampler.Get2D(), &pdf, type);
 
     // Return contribution of specular reflection
+    // 返回镜面反射的贡献值
     const Normal3f &ns = isect.shading.n;
     if (pdf > 0.f && !f.IsBlack() && AbsDot(wi, ns) != 0.f) {
         // Compute ray differential _rd_ for specular reflection

@@ -46,6 +46,8 @@
 namespace pbrt {
 
 // LightStrategy Declarations
+// UniformSampleAll: 循环采样所有光源的采样点（每个光源采样次数由Light::nSamples指定）
+// UniformSampleOne: 随机选择一个光源的一个采样
 enum class LightStrategy { UniformSampleAll, UniformSampleOne };
 
 // DirectLightingIntegrator Declarations

@@ -228,7 +228,7 @@ class BxDF {
 	// 不是所有的BxDF都可以求值，例如对于镜子、玻璃、水面等从一个入射方向将光线散射至单一出射方向（见SpecularReflection类）
 	// 可使用delta分布来描述这种除了出射方向其他都是0的情况，即使用Sample_f()（需使用Monte Carlo算法）
 	// 输入：出射向量wo，采样点坐标sample
-	// 输出：入射向量wi，用MentoCarlo算法计算出的采样点sample的pdf值
+	// 输出：计算入射向量wi，用MentoCarlo算法计算出的采样点sample的pdf值
     virtual Spectrum Sample_f(const Vector3f &wo, Vector3f *wi,
                               const Point2f &sample, Float *pdf,
                               BxDFType *sampledType = nullptr) const;
