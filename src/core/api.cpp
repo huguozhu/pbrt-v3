@@ -171,7 +171,7 @@ struct RenderOptions {
     ParamSet SamplerParams;
     std::string AcceleratorName = "bvh";
     ParamSet AcceleratorParams;
-    std::string IntegratorName = "whitted";
+    std::string IntegratorName = "path";
     ParamSet IntegratorParams;
     std::string CameraName = "perspective";
     ParamSet CameraParams;

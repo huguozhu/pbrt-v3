@@ -107,6 +107,7 @@ Spectrum PathIntegrator::Li(const RayDifferential &r, const Scene &scene,
         if (!foundIntersection || bounces >= maxDepth) break;
 
         // Compute scattering functions and skip over medium boundaries
+        // 计算散射材质bsdf
         isect.ComputeScatteringFunctions(ray, arena, true);
         if (!isect.bsdf) {
             VLOG(2) << "Skipping intersection due to null bsdf";
@@ -119,6 +120,7 @@ Spectrum PathIntegrator::Li(const RayDifferential &r, const Scene &scene,
 
         // Sample illumination from lights to find path contribution.
         // (But skip this for perfectly specular BSDFs.)
+        // 计算非完美镜面反射
         if (isect.bsdf->NumComponents(BxDFType(BSDF_ALL & ~BSDF_SPECULAR)) >
             0) {
             ++totalPaths;
@@ -143,6 +145,7 @@ Spectrum PathIntegrator::Li(const RayDifferential &r, const Scene &scene,
         CHECK_GE(beta.y(), 0.f);
         DCHECK(!std::isinf(beta.y()));
         specularBounce = (flags & BSDF_SPECULAR) != 0;
+        // 计算镜面折射
         if ((flags & BSDF_SPECULAR) && (flags & BSDF_TRANSMISSION)) {
             Float eta = isect.bsdf->eta;
             // Update the term that tracks radiance scaling for refraction
@@ -153,6 +156,7 @@ Spectrum PathIntegrator::Li(const RayDifferential &r, const Scene &scene,
         ray = isect.SpawnRay(wi);
 
         // Account for subsurface scattering, if applicable
+        // 计算次表面折射
         if (isect.bssrdf && (flags & BSDF_TRANSMISSION)) {
             // Importance sample the BSSRDF
             SurfaceInteraction pi;
@@ -178,6 +182,7 @@ Spectrum PathIntegrator::Li(const RayDifferential &r, const Scene &scene,
 
         // Possibly terminate the path with Russian roulette.
         // Factor out radiance scaling due to refraction in rrBeta.
+        // 使用俄罗斯轮盘加速
         Spectrum rrBeta = beta * etaScale;
         if (rrBeta.MaxComponentValue() < rrThreshold && bounces > 3) {
             Float q = std::max((Float).05, 1 - rrBeta.MaxComponentValue());

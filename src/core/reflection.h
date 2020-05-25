@@ -344,7 +344,7 @@ class SpecularReflection : public BxDF {
 
   private:
     // SpecularReflection Private Data
-    const Spectrum R;			// 缩放反射颜色
+    const Spectrum R;			// 镜面反射系数
     const Fresnel *fresnel;		// 介质的菲涅耳导体/绝缘体（FresnelConductor/FresnelDielectric）属性
 };
 // 镜面透射
