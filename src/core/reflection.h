@@ -439,7 +439,7 @@ class LambertianTransmission : public BxDF {
     // LambertianTransmission Private Data
     Spectrum T;		// 折射光谱T：表示入射光被折射的百分比量。
 };
-
+// OrenNayar:描述接近真实粗糙表面的模型，比Lambertian模型看上去更真实
 class OrenNayar : public BxDF {
   public:
     // OrenNayar Public Methods
