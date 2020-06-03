@@ -55,6 +55,7 @@ Spectrum FrConductor(Float cosThetaI, const Spectrum &etaI,
                      const Spectrum &etaT, const Spectrum &k);
 
 // BSDF Inline Functions
+// 在反射坐标系下cosθ = dot((0,0,1), w) = w.z
 inline Float CosTheta(const Vector3f &w) { return w.z; }
 inline Float Cos2Theta(const Vector3f &w) { return w.z * w.z; }
 inline Float AbsCosTheta(const Vector3f &w) { return std::abs(w.z); }
