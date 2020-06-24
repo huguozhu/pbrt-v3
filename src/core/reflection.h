@@ -122,7 +122,7 @@ inline bool SameHemisphere(const Vector3f &w, const Normal3f &wp) {
 // 对于每个BxDF的类型，必须选择反射和投射的一种，并再是漫反射、光泽反射和完美反射的一种
 enum BxDFType {
     BSDF_REFLECTION = 1 << 0,			// 反射
-    BSDF_TRANSMISSION = 1 << 1,			// 透射
+    BSDF_TRANSMISSION = 1 << 1,			// 折射
     BSDF_DIFFUSE = 1 << 2,				// 漫反射，反射射向所有方向，如粗糙的黑板或无光涂料(matte paint)
     BSDF_GLOSSY = 1 << 3,				// 光泽反射(glossy specular)，例如塑料
     BSDF_SPECULAR = 1 << 4,				// 完美反射，例如镜子
@@ -370,7 +370,7 @@ class SpecularTransmission : public BxDF {
 
   private:
     // SpecularTransmission Private Data
-	// 缩放折射颜色
+	// 镜面折射系数
     const Spectrum T;
 	// etaA：与法线同向的介质的反射率
 	// etaB：与法线反向的介质的反射率
