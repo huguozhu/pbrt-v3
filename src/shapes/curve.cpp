@@ -212,7 +212,7 @@ bool Curve::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
 
     Float eps =
         std::max(common->width[0], common->width[1]) * .05f;  // width / 20
-    auto Log2 = [](Float v) -> int {
+    auto Log2 = [](float v) -> int {
         if (v < 1) return 0;
         uint32_t bits = FloatToBits(v);
         // https://graphics.stanford.edu/~seander/bithacks.html#IntegerLog
@@ -365,7 +365,7 @@ bool Curve::recursiveIntersect(const Ray &ray, Float *tHit,
                 dpdv = rayToObject(dpdvPlane);
             }
             *isect = (*ObjectToWorld)(SurfaceInteraction(
-                ray(pc.z), pError, Point2f(u, v), -ray.d, dpdu, dpdv,
+                ray(*tHit), pError, Point2f(u, v), -ray.d, dpdu, dpdv,
                 Normal3f(0, 0, 0), Normal3f(0, 0, 0), ray.time, this));
         }
         ++nHits;

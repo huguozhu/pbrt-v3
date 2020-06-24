@@ -62,7 +62,7 @@ class MicrofacetDistribution {
         return 1 / (1 + Lambda(w));
     }
 	// 微面元几何遮挡分布(Shadowing-Masking Term)
-	// 意义：面元中未被遮挡(Shadowing&&Masking)的百分比
+    // 意义：已知入射wi和出射wo，求面元中未被遮挡(Shadowing&&Masking)的百分比
     virtual Float G(const Vector3f &wo, const Vector3f &wi) const {
         return 1 / (1 + Lambda(wo) + Lambda(wi));
     }
