@@ -74,6 +74,7 @@ struct TexInfo {
 };
 
 // ImageTexture Declarations
+// 以二位数组的方式存储贴图函数的采样点（将像素图的每一个像素值当成一个采样点），之后再利用这些采样点还原这个贴图函数。 
 template <typename Tmemory, typename Treturn>
 class ImageTexture : public Texture<Treturn> {
   public:

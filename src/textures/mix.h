@@ -46,6 +46,7 @@
 namespace pbrt {
 
 // MixTexture Declarations
+// 两个贴图的线性插值
 template <typename T>
 class MixTexture : public Texture<T> {
   public:

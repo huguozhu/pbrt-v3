@@ -46,6 +46,7 @@
 namespace pbrt {
 
 // ScaleTexture Declarations
+// 两个纹理的乘积
 template <typename T1, typename T2>
 class ScaleTexture : public Texture<T2> {
   public:
