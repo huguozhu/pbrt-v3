@@ -45,6 +45,8 @@
 namespace pbrt {
 
 // HaltonSampler Declarations
+// 霍尔顿采样：使用倒根算法(Radical Inversion)得到低偏差数列
+// 和哈默斯利(Hammersley)采样类似
 class HaltonSampler : public GlobalSampler {
   public:
     // HaltonSampler Public Methods

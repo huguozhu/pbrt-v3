@@ -70,7 +70,7 @@ class BVHAccel : public Aggregate {
 
   private:
     // BVHAccel Private Methods
-	// 实用SAH、HLBVH、Middle算法创建BVH树
+	// 使用SAH、HLBVH、Middle算法创建BVH树
 	// 指定start和end，表示可以实用所有primitive的一个子集创建BVH树
     BVHBuildNode *recursiveBuild(
         MemoryArena &arena, std::vector<BVHPrimitiveInfo> &primitiveInfo,
