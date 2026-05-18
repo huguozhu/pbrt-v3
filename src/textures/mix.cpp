@@ -32,11 +32,13 @@
 
 
 // textures/mix.cpp*
+// 文件功能：混合纹理（MixTexture）的创建函数实现
 #include "textures/mix.h"
 
 namespace pbrt {
 
 // MixTexture Method Definitions
+// 创建浮点型混合纹理：从参数中读取两个输入纹理和混合因子
 MixTexture<Float> *CreateMixFloatTexture(const Transform &tex2world,
                                          const TextureParams &tp) {
     return new MixTexture<Float>(tp.GetFloatTexture("tex1", 0.f),
@@ -44,6 +46,7 @@ MixTexture<Float> *CreateMixFloatTexture(const Transform &tex2world,
                                  tp.GetFloatTexture("amount", 0.5f));
 }
 
+// 创建光谱型混合纹理：在两个光谱纹理之间混合
 MixTexture<Spectrum> *CreateMixSpectrumTexture(const Transform &tex2world,
                                                const TextureParams &tp) {
     return new MixTexture<Spectrum>(tp.GetSpectrumTexture("tex1", 0.f),

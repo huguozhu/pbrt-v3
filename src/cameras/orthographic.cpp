@@ -32,6 +32,7 @@
 
 
 // cameras/orthographic.cpp*
+// 正交相机实现：所有光线沿同一方向（Z轴正方向）平行发射，无透视收缩效果
 #include "cameras/orthographic.h"
 #include "paramset.h"
 #include "sampler.h"
@@ -41,6 +42,7 @@
 namespace pbrt {
 
 // OrthographicCamera Definitions
+// GenerateRay: 生成正交投影光线，支持景深效果（透镜采样）
 Float OrthographicCamera::GenerateRay(const CameraSample &sample,
                                       Ray *ray) const {
     ProfilePhase prof(Prof::GenerateCameraRay);
@@ -67,6 +69,7 @@ Float OrthographicCamera::GenerateRay(const CameraSample &sample,
     return 1;
 }
 
+// GenerateRayDifferential: 生成带微分偏移量的正交光线，用于计算纹理滤波的各向异性
 Float OrthographicCamera::GenerateRayDifferential(const CameraSample &sample,
                                                   RayDifferential *ray) const {
     ProfilePhase prof(Prof::GenerateCameraRay);
@@ -118,6 +121,7 @@ Float OrthographicCamera::GenerateRayDifferential(const CameraSample &sample,
     return 1;
 }
 
+// CreateOrthographicCamera: 工厂函数，从参数集中读取配置并创建正交相机
 OrthographicCamera *CreateOrthographicCamera(const ParamSet &params,
                                              const AnimatedTransform &cam2world,
                                              Film *film, const Medium *medium) {

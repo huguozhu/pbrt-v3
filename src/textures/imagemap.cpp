@@ -32,6 +32,7 @@
 
 
 // textures/imagemap.cpp*
+// 文件功能：图像纹理（ImageTexture）的完整实现，包括纹理缓存、MIPMap创建、图像加载
 #include "textures/imagemap.h"
 #include "imageio.h"
 #include "stats.h"
@@ -39,6 +40,7 @@
 namespace pbrt {
 
 // ImageTexture Method Definitions
+// 构造函数：通过GetTexture获取或创建MIPMap
 template <typename Tmemory, typename Treturn>
 ImageTexture<Tmemory, Treturn>::ImageTexture(
     std::unique_ptr<TextureMapping2D> mapping, const std::string &filename,
@@ -49,16 +51,20 @@ ImageTexture<Tmemory, Treturn>::ImageTexture(
         GetTexture(filename, doTrilinear, maxAniso, wrapMode, scale, gamma);
 }
 
+// GetTexture静态方法：从纹理缓存中查找或创建新的MIPMap
+// 实现了纹理缓存机制，避免重复加载相同的纹理文件
 template <typename Tmemory, typename Treturn>
 MIPMap<Tmemory> *ImageTexture<Tmemory, Treturn>::GetTexture(
     const std::string &filename, bool doTrilinear, Float maxAniso,
     ImageWrap wrap, Float scale, bool gamma) {
     // Return _MIPMap_ from texture cache if present
+    // 如果缓存中已存在该纹理，直接返回缓存的MIPMap
     TexInfo texInfo(filename, doTrilinear, maxAniso, wrap, scale, gamma);
     if (textures.find(texInfo) != textures.end())
         return textures[texInfo].get();
 
     // Create _MIPMap_ for _filename_
+    // 创建MIPMap：从磁盘加载纹理图像
     ProfilePhase _(Prof::TextureLoading);
     Point2i resolution;
     std::unique_ptr<RGBSpectrum[]> texels = ReadImage(filename, &resolution);
@@ -73,6 +79,7 @@ MIPMap<Tmemory> *ImageTexture<Tmemory, Treturn>::GetTexture(
 
     // Flip image in y; texture coordinate space has (0,0) at the lower
     // left corner.
+    // 沿y轴翻转图像：纹理坐标系原点(0,0)在左下角
     for (int y = 0; y < resolution.y / 2; ++y)
         for (int x = 0; x < resolution.x; ++x) {
             int o1 = y * resolution.x + x;
@@ -83,6 +90,7 @@ MIPMap<Tmemory> *ImageTexture<Tmemory, Treturn>::GetTexture(
     MIPMap<Tmemory> *mipmap = nullptr;
     if (texels) {
         // Convert texels to type _Tmemory_ and create _MIPMap_
+        // 将纹素转换为目标类型并创建MIPMap
         std::unique_ptr<Tmemory[]> convertedTexels(
             new Tmemory[resolution.x * resolution.y]);
         for (int i = 0; i < resolution.x * resolution.y; ++i)
@@ -91,6 +99,7 @@ MIPMap<Tmemory> *ImageTexture<Tmemory, Treturn>::GetTexture(
                                      doTrilinear, maxAniso, wrap);
     } else {
         // Create one-valued _MIPMap_
+        // 如果图像加载失败，创建值为1.0的默认MIPMap
         Tmemory oneVal = scale;
         mipmap = new MIPMap<Tmemory>(Point2i(1, 1), &oneVal);
     }
@@ -143,6 +152,7 @@ ImageTexture<Float, Float> *CreateImageFloatTexture(const Transform &tex2world,
                                           maxAniso, wrapMode, scale, gamma);
 }
 
+// 创建光谱型图像纹理
 ImageTexture<RGBSpectrum, Spectrum> *CreateImageSpectrumTexture(
     const Transform &tex2world, const TextureParams &tp) {
     // Initialize 2D texture mapping _map_ from _tp_
@@ -169,6 +179,7 @@ ImageTexture<RGBSpectrum, Spectrum> *CreateImageSpectrumTexture(
     }
 
     // Initialize _ImageTexture_ parameters
+    // 初始化光谱型图像纹理参数：各向异性过滤、三线性过滤、环绕模式、缩放、Gamma校正
     Float maxAniso = tp.FindFloat("maxanisotropy", 8.f);
     bool trilerp = tp.FindBool("trilinear", false);
     std::string wrap = tp.FindString("wrap", "repeat");

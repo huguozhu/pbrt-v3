@@ -32,12 +32,15 @@
 
 
 // core/quaternion.cpp*
+// Quaternion: 四元数实现，提供四元数与旋转矩阵之间的相互转换，
+// 以及球面线性插值(Slerp)用于平滑旋转插值，在动画相机和变换中实现平滑旋转
 #include "quaternion.h"
 #include "transform.h"
 
 namespace pbrt {
 
 // Quaternion Method Definitions
+// 将四元数转换为旋转矩阵（4x4），pbrt使用左手坐标系，最终结果需要转置
 Transform Quaternion::ToTransform() const {
     Float xx = v.x * v.x, yy = v.y * v.y, zz = v.z * v.z;
     Float xy = v.x * v.y, xz = v.x * v.z, yz = v.y * v.z;
@@ -58,6 +61,7 @@ Transform Quaternion::ToTransform() const {
     return Transform(Transpose(m), m);
 }
 
+// 从旋转矩阵构造四元数：通过矩阵迹(trace)判断，使用数值稳定的方法提取四元数分量
 Quaternion::Quaternion(const Transform &t) {
     const Matrix4x4 &m = t.m;
     Float trace = m.m[0][0] + m.m[1][1] + m.m[2][2];
@@ -91,6 +95,8 @@ Quaternion::Quaternion(const Transform &t) {
     }
 }
 
+// 球面线性插值(Slerp)：在两个四元数之间进行平滑旋转插值，
+// 当角度很小时退化为线性插值(Nlerp)以避免数值不稳定
 Quaternion Slerp(Float t, const Quaternion &q1, const Quaternion &q2) {
     Float cosTheta = Dot(q1, q2);
     if (cosTheta > .9995f)

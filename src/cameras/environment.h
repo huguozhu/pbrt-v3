@@ -39,6 +39,8 @@
 #define PBRT_CAMERAS_ENVIRONMENT_H
 
 // cameras/environment.h*
+// EnvironmentCamera: 环境相机（全景相机），从视点向所有方向发射光线，
+// 生成球面环境贴图，实现360度全景渲染效果
 #include "camera.h"
 #include "film.h"
 
@@ -48,9 +50,11 @@ namespace pbrt {
 class EnvironmentCamera : public Camera {
   public:
     // EnvironmentCamera Public Methods
+    // 构造函数：初始化相机变换、快门时间、胶片和介质
     EnvironmentCamera(const AnimatedTransform &CameraToWorld, Float shutterOpen,
                       Float shutterClose, Film *film, const Medium *medium)
         : Camera(CameraToWorld, shutterOpen, shutterClose, film, medium) {}
+    // GenerateRay: 根据相机采样生成对应方向的环境光线
     Float GenerateRay(const CameraSample &sample, Ray *) const;
 };
 

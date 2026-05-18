@@ -46,6 +46,8 @@ http://pbrt.org/hair.pdf for a description of the implementation here.
 #define PBRT_MATERIALS_HAIR_H
 
 // materials/hair.h*
+// 文件描述: 头发材质的头文件。实现基于双圆柱模型的头发散射模型，
+// 支持纵向和方位角散射、毛发倾斜角等参数。
 #include "material.h"
 #include "pbrt.h"
 #include "reflection.h"
@@ -54,6 +56,8 @@ http://pbrt.org/hair.pdf for a description of the implementation here.
 namespace pbrt {
 
 // HairMaterial Declarations
+// 头发材质类，基于Marschner等人及pbrt团队扩展的头发散射模型。
+// 支持通过吸收系数、颜色、黑色素浓度、折射率、粗糙度等参数控制。
 class HairMaterial : public Material {
   public:
     // HairMaterial Public Methods
@@ -73,6 +77,7 @@ class HairMaterial : public Material {
           beta_m(beta_m),
           beta_n(beta_n),
           alpha(alpha) {}
+    // 计算散射函数: 创建头发材质的BSDF
     void ComputeScatteringFunctions(SurfaceInteraction *si, MemoryArena &arena,
                                     TransportMode mode,
                                     bool allowMultipleLobes) const;
@@ -84,6 +89,7 @@ class HairMaterial : public Material {
     std::shared_ptr<Texture<Float>> beta_m, beta_n, alpha;
 };
 
+// 创建头发材质对象的工厂函数
 HairMaterial *CreateHairMaterial(const TextureParams &mp);
 
 // HairBSDF Constants
@@ -91,18 +97,20 @@ static const int pMax = 3;
 static const Float SqrtPiOver8 = 0.626657069f;
 
 // HairBSDF Declarations
+// 头发双向散射分布函数类，基于双圆柱模型。
+// 支持纵向散射(Mp)、方位角散射(Np)和多路径散射(p阶散射项)。
 class HairBSDF : public BxDF {
   public:
     // HairBSDF Public Methods
     HairBSDF(Float h, Float eta, const Spectrum &sigma_a, Float beta_m,
              Float beta_n, Float alpha);
-    Spectrum f(const Vector3f &wo, const Vector3f &wi) const;
-    Spectrum Sample_f(const Vector3f &wo, Vector3f *wi, const Point2f &u,
+    Spectrum f(const Vector3f &wo, const Vector3f &wi) const;        // 评估BSDF值
+    Spectrum Sample_f(const Vector3f &wo, Vector3f *wi, const Point2f &u,  // 采样BSDF
                       Float *pdf, BxDFType *sampledType) const;
-    Float Pdf(const Vector3f &wo, const Vector3f &wi) const;
-    std::string ToString() const;
-    static Spectrum SigmaAFromConcentration(Float ce, Float cp);
-    static Spectrum SigmaAFromReflectance(const Spectrum &c, Float beta_n);
+    Float Pdf(const Vector3f &wo, const Vector3f &wi) const;         // 计算采样PDF
+    std::string ToString() const;                                    // 转换为字符串
+    static Spectrum SigmaAFromConcentration(Float ce, Float cp);     // 从黑色素浓度计算吸收系数
+    static Spectrum SigmaAFromReflectance(const Spectrum &c, Float beta_n);  // 从反射率计算吸收系数
 
   private:
     // HairBSDF Private Methods

@@ -32,6 +32,13 @@
 
 
 // shapes/cylinder.cpp*
+/**
+ * @file cylinder.cpp
+ * @brief 圆柱体(Cylinder)几何体的实现
+ *
+ * 实现了圆柱体的光线求交、面积计算和采样功能。
+ * 圆柱体外表面方程为 x^2 + y^2 = radius^2, z在[zMin, zMax]之间。
+ */
 #include "shapes/cylinder.h"
 #include "paramset.h"
 #include "efloat.h"
@@ -39,35 +46,44 @@
 
 namespace pbrt {
 
-// Cylinder Method Definitions
+// Cylinder Method Definitions / 圆柱体方法实现
+/**
+ * @brief 计算圆柱体在对象空间的包围盒
+ */
 Bounds3f Cylinder::ObjectBound() const {
     return Bounds3f(Point3f(-radius, -radius, zMin),
                     Point3f(radius, radius, zMax));
 }
 
+/**
+ * @brief 光线-圆柱体求交(完整求交)
+ *
+ * 在对象空间求解光线与圆柱面的二次方程。
+ * 圆柱隐式方程: x^2 + y^2 - radius^2 = 0, 同时z在[zMin, zMax]内
+ */
 bool Cylinder::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
                          bool testAlphaTexture) const {
     ProfilePhase p(Prof::ShapeIntersect);
     Float phi;
     Point3f pHit;
-    // Transform _Ray_ to object space
+    // Transform _Ray_ to object space / 将光线变换到对象空间
     Vector3f oErr, dErr;
     Ray ray = (*WorldToObject)(r, &oErr, &dErr);
 
-    // Compute quadratic cylinder coefficients
+    // Compute quadratic cylinder coefficients / 计算圆柱体二次型系数
 
-    // Initialize _EFloat_ ray coordinate values
+    // Initialize _EFloat_ ray coordinate values / 用EFloat初始化光线坐标值
     EFloat ox(ray.o.x, oErr.x), oy(ray.o.y, oErr.y), oz(ray.o.z, oErr.z);
     EFloat dx(ray.d.x, dErr.x), dy(ray.d.y, dErr.y), dz(ray.d.z, dErr.z);
     EFloat a = dx * dx + dy * dy;
     EFloat b = 2 * (dx * ox + dy * oy);
     EFloat c = ox * ox + oy * oy - EFloat(radius) * EFloat(radius);
 
-    // Solve quadratic equation for _t_ values
+    // Solve quadratic equation for _t_ values / 求解二次方程得到t值
     EFloat t0, t1;
     if (!Quadratic(a, b, c, &t0, &t1)) return false;
 
-    // Check quadric shape _t0_ and _t1_ for nearest intersection
+    // Check quadric shape _t0_ and _t1_ for nearest intersection / 选择最近的合理交点
     if (t0.UpperBound() > ray.tMax || t1.LowerBound() <= 0) return false;
     EFloat tShapeHit = t0;
     if (tShapeHit.LowerBound() <= 0) {
@@ -75,25 +91,25 @@ bool Cylinder::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
         if (tShapeHit.UpperBound() > ray.tMax) return false;
     }
 
-    // Compute cylinder hit point and $\phi$
+    // Compute cylinder hit point and $\phi$ / 计算圆柱体交点和角度phi
     pHit = ray((Float)tShapeHit);
 
-    // Refine cylinder intersection point
+    // Refine cylinder intersection point / 精修圆柱体交点
     Float hitRad = std::sqrt(pHit.x * pHit.x + pHit.y * pHit.y);
     pHit.x *= radius / hitRad;
     pHit.y *= radius / hitRad;
     phi = std::atan2(pHit.y, pHit.x);
     if (phi < 0) phi += 2 * Pi;
 
-    // Test cylinder intersection against clipping parameters
+    // Test cylinder intersection against clipping parameters / 测试圆柱体交点是否在裁剪参数范围内
     if (pHit.z < zMin || pHit.z > zMax || phi > phiMax) {
         if (tShapeHit == t1) return false;
         tShapeHit = t1;
         if (t1.UpperBound() > ray.tMax) return false;
-        // Compute cylinder hit point and $\phi$
+        // Compute cylinder hit point and $\phi$ / 计算圆柱体交点和角度phi
         pHit = ray((Float)tShapeHit);
 
-        // Refine cylinder intersection point
+        // Refine cylinder intersection point / 精修圆柱体交点
         Float hitRad = std::sqrt(pHit.x * pHit.x + pHit.y * pHit.y);
         pHit.x *= radius / hitRad;
         pHit.y *= radius / hitRad;
@@ -102,15 +118,15 @@ bool Cylinder::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
         if (pHit.z < zMin || pHit.z > zMax || phi > phiMax) return false;
     }
 
-    // Find parametric representation of cylinder hit
+    // Find parametric representation of cylinder hit / 计算交点的参数化表示(u,v)
     Float u = phi / phiMax;
     Float v = (pHit.z - zMin) / (zMax - zMin);
 
-    // Compute cylinder $\dpdu$ and $\dpdv$
+    // Compute cylinder $\dpdu$ and $\dpdv$ / 计算圆柱体偏导数向量
     Vector3f dpdu(-phiMax * pHit.y, phiMax * pHit.x, 0);
     Vector3f dpdv(0, 0, zMax - zMin);
 
-    // Compute cylinder $\dndu$ and $\dndv$
+    // Compute cylinder $\dndu$ and $\dndv$ / 计算圆柱体法线偏导数
     Vector3f d2Pduu = -phiMax * phiMax * Vector3f(pHit.x, pHit.y, 0);
     Vector3f d2Pduv(0, 0, 0), d2Pdvv(0, 0, 0);
 
@@ -130,10 +146,10 @@ bool Cylinder::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
     Normal3f dndv = Normal3f((g * F - f * G) * invEGF2 * dpdu +
                              (f * F - g * E) * invEGF2 * dpdv);
 
-    // Compute error bounds for cylinder intersection
+    // Compute error bounds for cylinder intersection / 计算圆柱体交点误差边界
     Vector3f pError = gamma(3) * Abs(Vector3f(pHit.x, pHit.y, 0));
 
-    // Initialize _SurfaceInteraction_ from parametric information
+    // Initialize _SurfaceInteraction_ from parametric information / 初始化表面交互信息
     *isect = (*ObjectToWorld)(SurfaceInteraction(pHit, pError, Point2f(u, v),
                                                  -ray.d, dpdu, dpdv, dndu, dndv,
                                                  ray.time, this));
@@ -143,28 +159,31 @@ bool Cylinder::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
     return true;
 }
 
+/**
+ * @brief 光线-圆柱体求交测试(仅判断是否相交)
+ */
 bool Cylinder::IntersectP(const Ray &r, bool testAlphaTexture) const {
     ProfilePhase p(Prof::ShapeIntersectP);
     Float phi;
     Point3f pHit;
-    // Transform _Ray_ to object space
+    // Transform _Ray_ to object space / 将光线变换到对象空间
     Vector3f oErr, dErr;
     Ray ray = (*WorldToObject)(r, &oErr, &dErr);
 
-    // Compute quadratic cylinder coefficients
+    // Compute quadratic cylinder coefficients / 计算圆柱体二次型系数
 
-    // Initialize _EFloat_ ray coordinate values
+    // Initialize _EFloat_ ray coordinate values / 用EFloat初始化光线坐标值
     EFloat ox(ray.o.x, oErr.x), oy(ray.o.y, oErr.y), oz(ray.o.z, oErr.z);
     EFloat dx(ray.d.x, dErr.x), dy(ray.d.y, dErr.y), dz(ray.d.z, dErr.z);
     EFloat a = dx * dx + dy * dy;
     EFloat b = 2 * (dx * ox + dy * oy);
     EFloat c = ox * ox + oy * oy - EFloat(radius) * EFloat(radius);
 
-    // Solve quadratic equation for _t_ values
+    // Solve quadratic equation for _t_ values / 求解二次方程得到t值
     EFloat t0, t1;
     if (!Quadratic(a, b, c, &t0, &t1)) return false;
 
-    // Check quadric shape _t0_ and _t1_ for nearest intersection
+    // Check quadric shape _t0_ and _t1_ for nearest intersection / 选择最近的合理交点
     if (t0.UpperBound() > ray.tMax || t1.LowerBound() <= 0) return false;
     EFloat tShapeHit = t0;
     if (tShapeHit.LowerBound() <= 0) {
@@ -172,25 +191,25 @@ bool Cylinder::IntersectP(const Ray &r, bool testAlphaTexture) const {
         if (tShapeHit.UpperBound() > ray.tMax) return false;
     }
 
-    // Compute cylinder hit point and $\phi$
+    // Compute cylinder hit point and $\phi$ / 计算圆柱体交点和角度phi
     pHit = ray((Float)tShapeHit);
 
-    // Refine cylinder intersection point
+    // Refine cylinder intersection point / 精修圆柱体交点
     Float hitRad = std::sqrt(pHit.x * pHit.x + pHit.y * pHit.y);
     pHit.x *= radius / hitRad;
     pHit.y *= radius / hitRad;
     phi = std::atan2(pHit.y, pHit.x);
     if (phi < 0) phi += 2 * Pi;
 
-    // Test cylinder intersection against clipping parameters
+    // Test cylinder intersection against clipping parameters / 测试圆柱体交点是否在裁剪参数范围内
     if (pHit.z < zMin || pHit.z > zMax || phi > phiMax) {
         if (tShapeHit == t1) return false;
         tShapeHit = t1;
         if (t1.UpperBound() > ray.tMax) return false;
-        // Compute cylinder hit point and $\phi$
+        // Compute cylinder hit point and $\phi$ / 计算圆柱体交点和角度phi
         pHit = ray((Float)tShapeHit);
 
-        // Refine cylinder intersection point
+        // Refine cylinder intersection point / 精修圆柱体交点
         Float hitRad = std::sqrt(pHit.x * pHit.x + pHit.y * pHit.y);
         pHit.x *= radius / hitRad;
         pHit.y *= radius / hitRad;
@@ -201,8 +220,15 @@ bool Cylinder::IntersectP(const Ray &r, bool testAlphaTexture) const {
     return true;
 }
 
+/**
+ * @brief 计算圆柱体表面积
+ */
 Float Cylinder::Area() const { return (zMax - zMin) * radius * phiMax; }
 
+/**
+ * @brief 在圆柱体表面采样一个点
+ * 通过z值和角度phi进行均匀采样
+ */
 Interaction Cylinder::Sample(const Point2f &u, Float *pdf) const {
     Float z = Lerp(u[0], zMin, zMax);
     Float phi = u[1] * phiMax;
@@ -220,6 +246,9 @@ Interaction Cylinder::Sample(const Point2f &u, Float *pdf) const {
     return it;
 }
 
+/**
+ * @brief 创建圆柱体形状的工厂函数
+ */
 std::shared_ptr<Cylinder> CreateCylinderShape(const Transform *o2w,
                                               const Transform *w2o,
                                               bool reverseOrientation,

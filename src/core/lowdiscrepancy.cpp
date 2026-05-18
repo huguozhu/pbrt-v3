@@ -32,6 +32,17 @@
 
 
 // core/lowdiscrepancy.cpp*
+//
+// 本模块实现了低差异序列（Low-Discrepancy Sequence）的生成和计算，
+// 在渲染中用于准蒙特卡洛（Quasi-Monte Carlo, QMC）积分。
+// 主要包括：
+// - 素数表（Primes）和素数前缀和表（PrimeSums）
+// - CMaxMinDist：最大最小距离矩阵（用于 (t,m,s)-net 生成）
+// - RadicalInverse：基数逆函数（van der Corput 序列的推广）
+// - ScrambledRadicalInverse：加扰后的基数逆函数
+// - ComputeRadicalInversePermutations：生成基数逆所需的随机排列
+// 这些序列的均匀分布特性优于纯随机数，可加速蒙特卡洛积分的收敛。
+//
 #include "lowdiscrepancy.h"
 
 namespace pbrt {
@@ -386,11 +397,16 @@ uint32_t CMaxMinDist[17][32] = {
 };
 
 // Low Discrepancy Static Functions
+
+// RadicalInverseSpecialized<base>: 模板特化的基数逆函数
+// 使用指定 base（素数）计算整数 a 的基数逆表示
+// 算法：在 base 进制下反转 a 的数字序列并映射到 [0,1) 区间
 template <int base>
 PBRT_NOINLINE static Float RadicalInverseSpecialized(uint64_t a) {
     const Float invBase = (Float)1 / (Float)base;
     uint64_t reversedDigits = 0;
     Float invBaseN = 1;
+    // 在 base 进制下逐位提取数字并反转
     while (a) {
         uint64_t next = a / base;
         uint64_t digit = a - next * base;
@@ -402,12 +418,16 @@ PBRT_NOINLINE static Float RadicalInverseSpecialized(uint64_t a) {
     return std::min(reversedDigits * invBaseN, OneMinusEpsilon);
 }
 
+// ScrambledRadicalInverseSpecialized<base>: 加扰的基数逆函数模板
+// 在反转数字的同时使用排列 perm 对各位数字进行加扰（scrambling），
+// 以消除基数逆序列的可见结构性伪影
 template <int base>
 PBRT_NOINLINE static Float
 ScrambledRadicalInverseSpecialized(const uint16_t *perm, uint64_t a) {
     const Float invBase = (Float)1 / (Float)base;
     uint64_t reversedDigits = 0;
     Float invBaseN = 1;
+    // 加扰版本：在反转数字时对每位应用排列 perm 进行随机化
     while (a) {
         uint64_t next = a / base;
         uint64_t digit = a - next * base;
@@ -418,14 +438,22 @@ ScrambledRadicalInverseSpecialized(const uint16_t *perm, uint64_t a) {
     }
     DCHECK_LT(invBaseN * (reversedDigits + invBase * perm[0] / (1 - invBase)),
               1.00001);
+    // 处理无限数字序列的加扰（通过几何级数求和修正）
     return std::min(
         invBaseN * (reversedDigits + invBase * perm[0] / (1 - invBase)),
         OneMinusEpsilon);
 }
 
 // Low Discrepancy Function Definitions
+
+// RadicalInverse: 计算基数逆（Radical Inverse）函数
+// baseIndex - 素数表的索引（0=基2, 1=基3, 2=基5, ...）
+// a - 需要求逆的整数
+// 返回值：a 在 base 进制下的数字反转后映射到 [0,1) 区间的浮点值
+// 基2的情况使用快速位反转优化
 Float RadicalInverse(int baseIndex, uint64_t a) {
     switch (baseIndex) {
+    // 基2：使用高效的位反转（bit reversal）实现
     case 0:
     // Compute base-2 radical inverse
 #ifndef PBRT_HAVE_HEX_FP_CONSTANTS
@@ -433,6 +461,7 @@ Float RadicalInverse(int baseIndex, uint64_t a) {
 #else
         return ReverseBits64(a) * 0x1p-64;
 #endif
+    // 基3及以上的基数：使用通用模板实现
     case 1:
         return RadicalInverseSpecialized<3>(a);
     case 2:
@@ -2487,15 +2516,21 @@ Float RadicalInverse(int baseIndex, uint64_t a) {
     }
 }
 
+// ComputeRadicalInversePermutations: 为所有素数基生成加扰所需的随机排列
+// 对每个素数基，生成 [0, base-1] 的随机排列用于 ScrambledRadicalInverse
+// rng - 随机数生成器，用于生成随机排列
+// 返回值：包含所有素数基排列的连续数组
 std::vector<uint16_t> ComputeRadicalInversePermutations(RNG &rng) {
     std::vector<uint16_t> perms;
     // Allocate space in _perms_ for radical inverse permutations
+    // 为所有素数基的排列分配连续存储空间
     int permArraySize = 0;
     for (int i = 0; i < PrimeTableSize; ++i) permArraySize += Primes[i];
     perms.resize(permArraySize);
     uint16_t *p = &perms[0];
     for (int i = 0; i < PrimeTableSize; ++i) {
         // Generate random permutation for $i$th prime base
+        // 为第 i 个素数基生成 [0, Primes[i]-1] 的随机排列
         for (int j = 0; j < Primes[i]; ++j) p[j] = j;
         Shuffle(p, Primes[i], 1, rng);
         p += Primes[i];
@@ -2503,8 +2538,15 @@ std::vector<uint16_t> ComputeRadicalInversePermutations(RNG &rng) {
     return perms;
 }
 
+// ScrambledRadicalInverse: 加扰的基数逆函数
+// 在基数逆的基础上对每位数字应用排列加扰，减少低频伪影
+// baseIndex - 素数表的索引
+// a - 需要求逆的整数
+// perm - 由 ComputeRadicalInversePermutations 生成的排列数组
+// 返回值：加扰后的基数逆值，在 [0,1) 区间内
 Float ScrambledRadicalInverse(int baseIndex, uint64_t a, const uint16_t *perm) {
     switch (baseIndex) {
+    // 各素数基的加扰基数逆，从基2到基1024
     case 0:
         return ScrambledRadicalInverseSpecialized<2>(perm, a);
     case 1:

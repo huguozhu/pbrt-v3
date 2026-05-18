@@ -32,6 +32,7 @@
 
 
 // materials/metal.cpp*
+// 文件描述: 金属材质的实现。使用微表面模型和导体菲涅耳反射描述金属表面。
 #include "materials/metal.h"
 #include "reflection.h"
 #include "paramset.h"
@@ -41,6 +42,7 @@
 namespace pbrt {
 
 // MetalMaterial Method Definitions
+// 金属材质构造函数: 初始化折射率、消光系数和粗糙度参数
 MetalMaterial::MetalMaterial(const std::shared_ptr<Texture<Spectrum>> &eta,
                              const std::shared_ptr<Texture<Spectrum>> &k,
                              const std::shared_ptr<Texture<Float>> &roughness,
@@ -56,14 +58,16 @@ MetalMaterial::MetalMaterial(const std::shared_ptr<Texture<Spectrum>> &eta,
       bumpMap(bumpMap),
       remapRoughness(remapRoughness) {}
 
+// 计算散射函数: 使用Trowbridge-Reitz微表面分布和导体菲涅耳反射创建BSDF
 void MetalMaterial::ComputeScatteringFunctions(SurfaceInteraction *si,
                                                MemoryArena &arena,
                                                TransportMode mode,
                                                bool allowMultipleLobes) const {
-    // Perform bump mapping with _bumpMap_, if present
+    // 如果存在凹凸贴图则执行凹凸映射
     if (bumpMap) Bump(bumpMap, si);
     si->bsdf = ARENA_ALLOC(arena, BSDF)(*si);
 
+    // 获取u/v方向的粗糙度，如果未单独指定则使用统一粗糙度
     Float uRough =
         uRoughness ? uRoughness->Evaluate(*si) : roughness->Evaluate(*si);
     Float vRough =
@@ -72,6 +76,7 @@ void MetalMaterial::ComputeScatteringFunctions(SurfaceInteraction *si,
         uRough = TrowbridgeReitzDistribution::RoughnessToAlpha(uRough);
         vRough = TrowbridgeReitzDistribution::RoughnessToAlpha(vRough);
     }
+    // 构建导体菲涅耳反射和微表面分布，并创建微表面反射BSDF
     Fresnel *frMf = ARENA_ALLOC(arena, FresnelConductor)(1., eta->Evaluate(*si),
                                                          k->Evaluate(*si));
     MicrofacetDistribution *distrib =

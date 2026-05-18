@@ -39,6 +39,8 @@
 #define PBRT_FILTERS_TRIANGLE_H
 
 // filters/triangle.h*
+// TriangleFilter: 三角形滤波器，权重从滤波器中心向边缘线性递减到零，
+// 实现比盒状滤波器更平滑的重建效果
 #include "filter.h"
 
 namespace pbrt {
@@ -46,7 +48,9 @@ namespace pbrt {
 // Triangle Filter Declarations
 class TriangleFilter : public Filter {
   public:
+    // TriangleFilter构造函数，调用Filter基类初始化滤波器半径
     TriangleFilter(const Vector2f &radius) : Filter(radius) {}
+    // Evaluate: 计算三角形滤波器在给定位置p处的权重值
     Float Evaluate(const Point2f &p) const;
 };
 

@@ -39,6 +39,7 @@
 #define PBRT_INTEGRATORS_AO_H
 
 // integrators/ao.h*
+// AOIntegrator：环境光照积分器，通过向半球方向发射光线并检测遮挡来计算环境光照（Ambient Occlusion）
 #include "pbrt.h"
 #include "integrator.h"
 

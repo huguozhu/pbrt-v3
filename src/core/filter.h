@@ -39,6 +39,8 @@
 #define PBRT_CORE_FILTER_H
 
 // core/filter.h*
+// Filter: 图像重建滤波器的抽象基类，定义像素滤波接口，
+// 所有具体的滤波器（盒状、高斯、Mitchell等）都继承此类
 #include "pbrt.h"
 #include "geometry.h"
 
@@ -49,12 +51,14 @@ class Filter {
   public:
     // Filter Interface
     virtual ~Filter();
+    // 构造函数：初始化滤波器半径和半径倒数
     Filter(const Vector2f &radius)
         : radius(radius), invRadius(Vector2f(1 / radius.x, 1 / radius.y)) {}
+    // Evaluate: 计算滤波器在给定位置p处的权重值（纯虚函数）
     virtual Float Evaluate(const Point2f &p) const = 0;
 
     // Filter Public Data
-    const Vector2f radius, invRadius;
+    const Vector2f radius, invRadius;  // 滤波器半径及倒数
 };
 
 }  // namespace pbrt

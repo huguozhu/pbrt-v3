@@ -32,6 +32,7 @@
 
 
 // cameras/environment.cpp*
+// 环境相机实现：从视点向所有方向（球面）发射光线，生成全景环境贴图
 #include "cameras/environment.h"
 #include "paramset.h"
 #include "sampler.h"
@@ -40,12 +41,15 @@
 namespace pbrt {
 
 // EnvironmentCamera Method Definitions
+// GenerateRay: 根据采样点生成环境光线的方向，将像素坐标映射到球面坐标(theta, phi)
 Float EnvironmentCamera::GenerateRay(const CameraSample &sample,
                                      Ray *ray) const {
     ProfilePhase prof(Prof::GenerateCameraRay);
     // Compute environment camera ray direction
+    // 将像素位置映射到球面坐标：theta范围[0,pi]，phi范围[0,2*pi]
     Float theta = Pi * sample.pFilm.y / film->fullResolution.y;
     Float phi = 2 * Pi * sample.pFilm.x / film->fullResolution.x;
+    // 从球面坐标计算笛卡尔坐标方向向量
     Vector3f dir(std::sin(theta) * std::cos(phi), std::cos(theta),
                  std::sin(theta) * std::sin(phi));
     *ray = Ray(Point3f(0, 0, 0), dir, Infinity,
@@ -55,6 +59,7 @@ Float EnvironmentCamera::GenerateRay(const CameraSample &sample,
     return 1;
 }
 
+// CreateEnvironmentCamera: 工厂函数，从参数集中读取配置并创建环境相机
 EnvironmentCamera *CreateEnvironmentCamera(const ParamSet &params,
                                            const AnimatedTransform &cam2world,
                                            Film *film, const Medium *medium) {

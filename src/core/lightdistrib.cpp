@@ -30,6 +30,16 @@
 
  */
 
+// core/lightdistrib.cpp*
+//
+// 本模块实现了不同的光源采样分布策略，用于在渲染过程中
+// 根据场景位置选择合适的灯光进行重要性采样。
+// 支持三种策略：
+// - UniformLightDistribution: 均匀分布，所有灯光等概率
+// - PowerLightDistribution: 基于灯光功率的分布
+// - SpatialLightDistribution: 空间感知分布，将场景划分为体素，
+//   每个体素独立计算灯光贡献分布，使用哈希表缓存结果
+//
 // TODO (maybe): have integrators pre-prime the cache by rendering a very
 // low res image first?
 
@@ -43,8 +53,12 @@
 
 namespace pbrt {
 
+// LightDistribution: 基类析构函数
 LightDistribution::~LightDistribution() {}
 
+// CreateLightSampleDistribution: 工厂函数，根据名称创建光源采样分布
+// 支持 "uniform"（均匀）、"power"（基于功率）、"spatial"（空间感知）
+// 若场景只有一盏灯，则退化为均匀分布
 std::unique_ptr<LightDistribution> CreateLightSampleDistribution(
     const std::string &name, const Scene &scene) {
     if (name == "uniform" || scene.lights.size() == 1)
@@ -65,18 +79,24 @@ std::unique_ptr<LightDistribution> CreateLightSampleDistribution(
     }
 }
 
+// UniformLightDistribution: 构造函数，创建均匀的灯光分布
+// 所有灯光具有相同的采样概率
 UniformLightDistribution::UniformLightDistribution(const Scene &scene) {
     std::vector<Float> prob(scene.lights.size(), Float(1));
     distrib.reset(new Distribution1D(&prob[0], int(prob.size())));
 }
 
+// UniformLightDistribution::Lookup: 在任意位置返回相同的均匀分布
 const Distribution1D *UniformLightDistribution::Lookup(const Point3f &p) const {
     return distrib.get();
 }
 
+// PowerLightDistribution: 构造函数，基于灯光功率创建分布
+// 使用 ComputeLightPowerDistribution 计算各灯光的功率分布
 PowerLightDistribution::PowerLightDistribution(const Scene &scene)
     : distrib(ComputeLightPowerDistribution(scene)) {}
 
+// PowerLightDistribution::Lookup: 在任意位置返回相同的基于功率的分布
 const Distribution1D *PowerLightDistribution::Lookup(const Point3f &p) const {
     return distrib.get();
 }
@@ -93,12 +113,17 @@ STAT_INT_DISTRIBUTION("SpatialLightDistribution/Hash probes per lookup", nProbes
 // packed coordinate value, which we use to represent
 static const uint64_t invalidPackedPos = 0xffffffffffffffff;
 
+// SpatialLightDistribution: 构造函数，创建空间感知的光源采样分布
+// 将场景包围盒划分为 maxVoxels^3 个体素，每个体素独立计算光源分布
+// 使用空间哈希表缓存已计算的体素分布
 SpatialLightDistribution::SpatialLightDistribution(const Scene &scene,
                                                    int maxVoxels)
     : scene(scene) {
     // Compute the number of voxels so that the widest scene bounding box
     // dimension has maxVoxels voxels and the other dimensions have a number
     // of voxels so that voxels are roughly cube shaped.
+    // 计算体素数量，使场景包围盒最长的维度有 maxVoxels 个体素，
+    // 其他维度的体素数量使体素大致呈立方体形状
     Bounds3f b = scene.WorldBound();
     Vector3f diag = b.Diagonal();
     Float bmax = diag[b.MaximumExtent()];
@@ -107,9 +132,11 @@ SpatialLightDistribution::SpatialLightDistribution(const Scene &scene,
         // In the Lookup() method, we require that 20 or fewer bits be
         // sufficient to represent each coordinate value. It's fairly hard
         // to imagine that this would ever be a problem.
+        // Lookup() 要求每个坐标不超过 20 位
         CHECK_LT(nVoxels[i], 1 << 20);
     }
 
+    // 初始化哈希表，所有条目标记为无效
     hashTableSize = 4 * nVoxels[0] * nVoxels[1] * nVoxels[2];
     hashTable.reset(new HashEntry[hashTableSize]);
     for (int i = 0; i < hashTableSize; ++i) {
@@ -122,9 +149,11 @@ SpatialLightDistribution::SpatialLightDistribution(const Scene &scene,
         nVoxels[2] << ")";
 }
 
+// SpatialLightDistribution: 析构函数，释放所有缓存的分布
 SpatialLightDistribution::~SpatialLightDistribution() {
     // Gather statistics about how well the computed distributions are across
     // the buckets.
+    // 清理哈希表中缓存的分布对象
     for (size_t i = 0; i < hashTableSize; ++i) {
         HashEntry &entry = hashTable[i];
         if (entry.distribution.load())
@@ -132,21 +161,26 @@ SpatialLightDistribution::~SpatialLightDistribution() {
     }
 }
 
+// SpatialLightDistribution::Lookup: 查找或计算给定位置的光源采样分布
+// 使用体素哈希表缓存已计算的分布，支持多线程并发访问
 const Distribution1D *SpatialLightDistribution::Lookup(const Point3f &p) const {
     ProfilePhase _(Prof::LightDistribLookup);
     ++nLookups;
 
     // First, compute integer voxel coordinates for the given point |p|
     // with respect to the overall voxel grid.
+    // 计算给定点 p 在体素网格中的整数坐标
     Vector3f offset = scene.WorldBound().Offset(p);  // offset in [0,1].
     Point3i pi;
     for (int i = 0; i < 3; ++i)
         // The clamp should almost never be necessary, but is there to be
         // robust to computed intersection points being slightly outside
         // the scene bounds due to floating-point roundoff error.
+        // 钳位操作主要是为了鲁棒性，防止浮点误差导致坐标越界
         pi[i] = Clamp(int(offset[i] * nVoxels[i]), 0, nVoxels[i] - 1);
 
     // Pack the 3D integer voxel coordinates into a single 64-bit value.
+    // 将三维体素坐标打包为 64 位整数值（每维 20 位）
     uint64_t packedPos = (uint64_t(pi[0]) << 40) | (uint64_t(pi[1]) << 20) | pi[2];
     CHECK_NE(packedPos, invalidPackedPos);
 
@@ -229,6 +263,10 @@ const Distribution1D *SpatialLightDistribution::Lookup(const Point3f &p) const {
     }
 }
 
+// ComputeDistribution: 为指定体素计算光源采样分布
+// 通过 Halton 序列在体素内采样多个点，估算各光源的贡献权重
+// pi - 体素的整数坐标
+// 返回值：基于贡献计算的光源分布
 Distribution1D *
 SpatialLightDistribution::ComputeDistribution(Point3i pi) const {
     ProfilePhase _(Prof::LightDistribCreation);
@@ -252,6 +290,9 @@ SpatialLightDistribution::ComputeDistribution(Point3i pi) const {
     // sample (ignoring visibility between the point in the voxel and the
     // point on the light source) as an approximation to how much the light
     // is likely to contribute to illumination in the voxel.
+    // 计算采样分布：使用 3D Halton 序列在体素内采样 128 个点，
+    // 对每个采样点评估所有光源的 Li/pdf 作为该光源贡献的近似
+    // （不考虑可见性，仅作为体素内光源贡献的粗略估计）
     int nSamples = 128;
     std::vector<Float> lightContrib(scene.lights.size(), Float(0));
     for (int i = 0; i < nSamples; ++i) {
@@ -283,6 +324,8 @@ SpatialLightDistribution::ComputeDistribution(Point3i pi) const {
     // we didn't find such a point when sampling above.  Therefore, compute
     // a minimum (small) weight and ensure that all lights are given at
     // least the corresponding probability.
+    // 确保没有光源被赋予零概率：计算一个最小权重，使所有光源
+    // 至少获得相应的概率，防止因采样不足而遗漏潜在贡献光源
     Float sumContrib =
         std::accumulate(lightContrib.begin(), lightContrib.end(), Float(0));
     Float avgContrib = sumContrib / (nSamples * lightContrib.size());

@@ -32,11 +32,21 @@
 
 
 // core/memory.cpp*
+//
+// 本模块提供了对齐内存分配和释放的基础设施。
+// AllocAligned 分配缓存行对齐的内存，FreeAligned 释放之。
+// 对齐分配对于 SIMD 向量化和避免伪共享（false sharing）
+// 具有重要意义，可提升多线程渲染性能。
+//
 #include "memory.h"
 
 namespace pbrt {
 
 // Memory Allocation Functions
+
+// AllocAligned: 分配指定大小、缓存行对齐的内存
+// 在 Windows 上使用 _aligned_malloc，在 POSIX 上使用 posix_memalign
+// 对齐到 PBRT_L1_CACHE_LINE_SIZE（通常为 64 字节）
 void *AllocAligned(size_t size) {
 #if defined(PBRT_HAVE__ALIGNED_MALLOC)
     return _aligned_malloc(size, PBRT_L1_CACHE_LINE_SIZE);
@@ -49,6 +59,8 @@ void *AllocAligned(size_t size) {
 #endif
 }
 
+// FreeAligned: 释放由 AllocAligned 分配的对齐内存
+// 在 Windows 上使用 _aligned_free，其他平台使用标准 free
 void FreeAligned(void *ptr) {
     if (!ptr) return;
 #if defined(PBRT_HAVE__ALIGNED_MALLOC)

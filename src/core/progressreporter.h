@@ -39,6 +39,8 @@
 #define PBRT_CORE_PROGRESSREPORTER_H
 
 // core/progressreporter.h*
+// ProgressReporter: 渲染进度报告器，在控制台显示渲染进度条和预计剩余时间，
+// 使用独立线程定期更新显示
 #include "pbrt.h"
 #include <atomic>
 #include <chrono>
@@ -47,16 +49,20 @@
 namespace pbrt {
 
 // ProgressReporter Declarations
+// ProgressReporter: 渲染进度报告器，显示进度百分比、已用时间和预计剩余时间
 class ProgressReporter {
   public:
     // ProgressReporter Public Methods
+    // 构造函数：totalWork为总工作量，title为任务名称
     ProgressReporter(int64_t totalWork, const std::string &title);
     ~ProgressReporter();
+    // Update: 增加已完成的工作量（默认为1）
     void Update(int64_t num = 1) {
         if (num == 0 || PbrtOptions.quiet) return;
         workDone += num;
     }
     Float ElapsedMS() const {
+        // 返回从开始到现在的毫秒数
         std::chrono::system_clock::time_point now =
             std::chrono::system_clock::now();
         int64_t elapsedMS =
@@ -69,15 +75,15 @@ class ProgressReporter {
 
   private:
     // ProgressReporter Private Methods
-    void PrintBar();
+    void PrintBar();  // 打印进度条
 
     // ProgressReporter Private Data
-    const int64_t totalWork;
-    const std::string title;
-    const std::chrono::system_clock::time_point startTime;
-    std::atomic<int64_t> workDone;
-    std::atomic<bool> exitThread;
-    std::thread updateThread;
+    const int64_t totalWork;              // 总工作量
+    const std::string title;              // 任务标题
+    const std::chrono::system_clock::time_point startTime;  // 开始时间
+    std::atomic<int64_t> workDone;        // 已完成工作量（原子操作，线程安全）
+    std::atomic<bool> exitThread;         // 退出线程标记
+    std::thread updateThread;             // 更新显示的后台线程
 };
 
 }  // namespace pbrt

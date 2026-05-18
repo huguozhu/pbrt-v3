@@ -32,11 +32,13 @@
 
 
 // textures/constant.cpp*
+// 文件功能：常量纹理（ConstantTexture）的创建函数实现
 #include "textures/constant.h"
 
 namespace pbrt {
 
 // ConstantTexture Method Definitions
+// 创建浮点型常量纹理：从参数中读取固定值
 ConstantTexture<Float> *CreateConstantFloatTexture(const Transform &tex2world,
                                                    const TextureParams &tp) {
     return new ConstantTexture<Float>(tp.FindFloat("value", 1.f));
@@ -44,6 +46,7 @@ ConstantTexture<Float> *CreateConstantFloatTexture(const Transform &tex2world,
 
 ConstantTexture<Spectrum> *CreateConstantSpectrumTexture(
     const Transform &tex2world, const TextureParams &tp) {
+    // 创建光谱型常量纹理：默认值为白色(1.0)
     return new ConstantTexture<Spectrum>(
         tp.FindSpectrum("value", Spectrum(1.f)));
 }

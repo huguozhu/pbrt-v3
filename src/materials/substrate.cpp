@@ -32,6 +32,7 @@
 
 
 // materials/substrate.cpp*
+// 文件描述: 基底层材质的实现。使用FresnelBlend BSDF混合漫反射和高光微表面反射。
 #include "materials/substrate.h"
 #include "spectrum.h"
 #include "reflection.h"
@@ -42,10 +43,11 @@
 namespace pbrt {
 
 // SubstrateMaterial Method Definitions
+// 计算散射函数: 创建FresnelBlend BSDF(漫反射+各向异性微表面高光)
 void SubstrateMaterial::ComputeScatteringFunctions(
     SurfaceInteraction *si, MemoryArena &arena, TransportMode mode,
     bool allowMultipleLobes) const {
-    // Perform bump mapping with _bumpMap_, if present
+    // 如果存在凹凸贴图则执行凹凸映射
     if (bumpMap) Bump(bumpMap, si);
     si->bsdf = ARENA_ALLOC(arena, BSDF)(*si);
     Spectrum d = Kd->Evaluate(*si).Clamp();
@@ -54,6 +56,7 @@ void SubstrateMaterial::ComputeScatteringFunctions(
     Float roughv = nv->Evaluate(*si);
 
     if (!d.IsBlack() || !s.IsBlack()) {
+        // 使用FresnelBlend BSDF混合漫反射和高光反射
         if (remapRoughness) {
             roughu = TrowbridgeReitzDistribution::RoughnessToAlpha(roughu);
             roughv = TrowbridgeReitzDistribution::RoughnessToAlpha(roughv);
@@ -64,6 +67,7 @@ void SubstrateMaterial::ComputeScatteringFunctions(
     }
 }
 
+// 创建基底层材质对象的工厂函数
 SubstrateMaterial *CreateSubstrateMaterial(const TextureParams &mp) {
     std::shared_ptr<Texture<Spectrum>> Kd =
         mp.GetSpectrumTexture("Kd", Spectrum(.5f));

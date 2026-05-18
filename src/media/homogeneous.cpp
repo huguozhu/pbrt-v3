@@ -32,6 +32,7 @@
 
 
 // media/homogeneous.cpp*
+// 文件描述: 均匀参与介质的实现。提供空间均匀介质的透射率计算和散射事件采样。
 #include "media/homogeneous.h"
 #include "sampler.h"
 #include "interaction.h"
@@ -41,16 +42,21 @@
 namespace pbrt {
 
 // HomogeneousMedium Method Definitions
+// 计算光线穿过均匀介质的透射率: Tr = exp(-sigma_t * distance)
+// 对于均匀介质，透射率有解析解，即比尔-朗伯定律的指数衰减形式。
 Spectrum HomogeneousMedium::Tr(const Ray &ray, Sampler &sampler) const {
     ProfilePhase _(Prof::MediumTr);
     return Exp(-sigma_t * std::min(ray.tMax * ray.d.Length(), MaxFloat));
 }
 
+// 采样均匀介质中的散射事件: 随机选择一个光谱通道，沿光线方向采样距离，
+// 如果采样点在介质内则创建介质交互，并计算相应的透射率和采样密度。
 Spectrum HomogeneousMedium::Sample(const Ray &ray, Sampler &sampler,
                                    MemoryArena &arena,
                                    MediumInteraction *mi) const {
     ProfilePhase _(Prof::MediumSample);
-    // Sample a channel and distance along the ray
+    // 随机选择一个光谱通道，并沿光线采样传播距离
+    // 这是基于比尔-朗伯定律的重要性采样
     int channel = std::min((int)(sampler.Get1D() * Spectrum::nSamples),
                            Spectrum::nSamples - 1);
     Float dist = -std::log(1 - sampler.Get1D()) / sigma_t[channel];
@@ -60,10 +66,10 @@ Spectrum HomogeneousMedium::Sample(const Ray &ray, Sampler &sampler,
         *mi = MediumInteraction(ray(t), -ray.d, ray.time, this,
                                 ARENA_ALLOC(arena, HenyeyGreenstein)(g));
 
-    // Compute the transmittance and sampling density
+    // 计算透射率和采样密度
     Spectrum Tr = Exp(-sigma_t * std::min(t, MaxFloat) * ray.d.Length());
 
-    // Return weighting factor for scattering from homogeneous medium
+    // 返回均匀介质的散射权重因子
     Spectrum density = sampledMedium ? (sigma_t * Tr) : Tr;
     Float pdf = 0;
     for (int i = 0; i < Spectrum::nSamples; ++i) pdf += density[i];

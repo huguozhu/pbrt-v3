@@ -32,6 +32,8 @@
 
 
 // integrators/mlt.cpp*
+// MLTIntegrator实现：Metropolis Light Transport（梅特罗波利斯光传输），
+// 使用Metropolis-Hastings算法在路径空间中采样，通过变异策略高效探索对图像贡献大的路径
 #include "integrators/mlt.h"
 #include "integrators/bdpt.h"
 #include "scene.h"
@@ -56,6 +58,7 @@ static const int connectionStreamIndex = 2;
 static const int nSampleStreams = 3;
 
 // MLTSampler Method Definitions
+// Get1D：获取一个一维MLT样本，确保基础样本已准备好
 Float MLTSampler::Get1D() {
     ProfilePhase _(Prof::GetSample);
     int index = GetNextIndex();
@@ -70,6 +73,7 @@ std::unique_ptr<Sampler> MLTSampler::Clone(int seed) {
     return nullptr;
 }
 
+// StartIteration：开始新的一轮迭代，根据概率决定是否进行大步变异
 void MLTSampler::StartIteration() {
     currentIteration++;
     largeStep = rng.UniformFloat() < largeStepProbability;
@@ -79,6 +83,7 @@ void MLTSampler::Accept() {
     if (largeStep) lastLargeStepIteration = currentIteration;
 }
 
+// EnsureReady：确保索引对应的基础样本已准备好，必要时应用大步或小步变异
 void MLTSampler::EnsureReady(int index) {
     // Enlarge _MLTSampler::X_ if necessary and get current $\VEC{X}_i$
     if (index >= X.size()) X.resize(index + 1);
@@ -110,6 +115,7 @@ void MLTSampler::EnsureReady(int index) {
     Xi.lastModificationIteration = currentIteration;
 }
 
+// Reject：拒绝本轮变异，恢复所有被修改的基础样本到备份值
 void MLTSampler::Reject() {
     for (auto &Xi : X)
         if (Xi.lastModificationIteration == currentIteration) Xi.Restore();
@@ -123,6 +129,7 @@ void MLTSampler::StartStream(int index) {
 }
 
 // MLT Method Definitions
+// L：计算给定深度下MLT路径的贡献，生成相机子路径和光源子路径并执行连接
 Spectrum MLTIntegrator::L(const Scene &scene, MemoryArena &arena,
                           const std::unique_ptr<Distribution1D> &lightDistr,
                           const std::unordered_map<const Light *, size_t> &lightToIndex,
@@ -162,6 +169,7 @@ Spectrum MLTIntegrator::L(const Scene &scene, MemoryArena &arena,
            nStrategies;
 }
 
+// Render：MLT主渲染函数，生成bootstrap样本初始化马尔可夫链，然后运行多条链进行渲染
 void MLTIntegrator::Render(const Scene &scene) {
     std::unique_ptr<Distribution1D> lightDistr =
         ComputeLightPowerDistribution(scene);
@@ -265,6 +273,7 @@ void MLTIntegrator::Render(const Scene &scene) {
     camera->film->WriteImage(b / mutationsPerPixel);
 }
 
+// CreateMLTIntegrator：根据参数集创建MLTIntegrator实例
 MLTIntegrator *CreateMLTIntegrator(const ParamSet &params,
                                    std::shared_ptr<const Camera> camera) {
     int maxDepth = params.FindOneInt("maxdepth", 5);

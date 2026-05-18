@@ -32,6 +32,7 @@
 
 
 // materials/plastic.cpp*
+// 文件描述: 塑料材质的实现。漫反射底层(Lambertian)加高光清漆层(MicrofacetReflection)。
 #include "materials/plastic.h"
 #include "spectrum.h"
 #include "reflection.h"
@@ -42,22 +43,23 @@
 namespace pbrt {
 
 // PlasticMaterial Method Definitions
+// 计算散射函数: 创建塑料材质的漫反射+高光双层BSDF
 void PlasticMaterial::ComputeScatteringFunctions(
     SurfaceInteraction *si, MemoryArena &arena, TransportMode mode,
     bool allowMultipleLobes) const {
-    // Perform bump mapping with _bumpMap_, if present
+    // 如果存在凹凸贴图则执行凹凸映射
     if (bumpMap) Bump(bumpMap, si);
     si->bsdf = ARENA_ALLOC(arena, BSDF)(*si);
-    // Initialize diffuse component of plastic material
+    // 初始化塑料材质的漫反射分量
     Spectrum kd = Kd->Evaluate(*si).Clamp();
     if (!kd.IsBlack())
         si->bsdf->Add(ARENA_ALLOC(arena, LambertianReflection)(kd));
 
-    // Initialize specular component of plastic material
+    // 初始化塑料材质的高光反射分量(使用微表面模型)
     Spectrum ks = Ks->Evaluate(*si).Clamp();
     if (!ks.IsBlack()) {
         Fresnel *fresnel = ARENA_ALLOC(arena, FresnelDielectric)(1.5f, 1.f);
-        // Create microfacet distribution _distrib_ for plastic material
+        // 为塑料材质创建微表面分布
         Float rough = roughness->Evaluate(*si);
         if (remapRoughness)
             rough = TrowbridgeReitzDistribution::RoughnessToAlpha(rough);
@@ -69,6 +71,7 @@ void PlasticMaterial::ComputeScatteringFunctions(
     }
 }
 
+// 创建塑料材质对象的工厂函数
 PlasticMaterial *CreatePlasticMaterial(const TextureParams &mp) {
     std::shared_ptr<Texture<Spectrum>> Kd =
         mp.GetSpectrumTexture("Kd", Spectrum(0.25f));

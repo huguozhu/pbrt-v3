@@ -38,7 +38,7 @@
 #ifndef PBRT_CORE_PARSER_H
 #define PBRT_CORE_PARSER_H
 
-// core/parser.h*
+// core/parser.h* -- pbrt场景文件解析器，负责将.pbrt格式的场景描述文件解析为一系列标记(Token)
 #include "pbrt.h"
 
 #include <functional>
@@ -49,6 +49,7 @@
 namespace pbrt {
 
 // Loc represents a position in a file being parsed.
+// Loc表示被解析文件中的一个位置。
 struct Loc {
     Loc() = default;
     Loc(const std::string &filename) : filename(filename) {}
@@ -58,11 +59,14 @@ struct Loc {
 };
 
 // If not nullptr, stores the current file location of the parser.
+// 如果不是nullptr，则存储解析器当前的场景文件位置信息。
 extern Loc *parserLoc;
 
 // Reimplement enough of absl/std::string_view as needed for the below
 // (Bringing on the abseil dependency at this point just for this seems
 // excessive.)
+// 重新实现了absl/std::string_view的核心功能，仅满足当前解析器需求
+// （仅为这一功能引入abseil依赖似乎有些过度。）
 class string_view {
   public:
     string_view(const char *start, size_t size) : ptr(start), length(size) {}
@@ -100,21 +104,27 @@ class string_view {
 };
 
 // Tokenizer converts a single pbrt scene file into a series of tokens.
+// Tokenizer将单个pbrt场景文件转换为一系列标记(Token)。
 class Tokenizer {
   public:
+    // CreateFromFile: 从磁盘文件创建Tokenizer，失败时调用errorCallback报告错误
     static std::unique_ptr<Tokenizer> CreateFromFile(
         const std::string &filename,
         std::function<void(const char *)> errorCallback);
+    // CreateFromString: 从内存字符串创建Tokenizer，用于处理已读入内存的场景文本
     static std::unique_ptr<Tokenizer> CreateFromString(
         std::string str, std::function<void(const char *)> errorCallback);
 
+    // ~Tokenizer: 析构函数，释放mmap映射或清理字符串资源
     ~Tokenizer();
 
     // Returns an empty string_view at EOF. Note that the returned
     // string_view is not guaranteed to be valid after next call to Next().
+    // 到达文件末尾(EOF)时返回空的string_view。
+    // 注意：返回的string_view在下一次调用Next()后可能失效。
     string_view Next();
 
-    Loc loc;
+    Loc loc;  // 当前解析位置，记录行号和列号
 
   private:
     Tokenizer(std::string str, std::function<void(const char *)> errorCallback);

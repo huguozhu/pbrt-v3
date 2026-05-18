@@ -39,6 +39,8 @@
 #define PBRT_CORE_LOWDISCREPANCY_H
 
 // core/lowdiscrepancy.h*
+// 低差异序列: 提供高质量的低差异采样序列（Van der Corput、Sobol'、Halton等），
+// 用于渲染中的重要性采样，比纯随机采样具有更低的方差
 #include "pbrt.h"
 #include "rng.h"
 #include "sampling.h"
@@ -47,15 +49,18 @@
 namespace pbrt {
 
 // Low Discrepancy Declarations
+// RadicalInverse: 计算基数baseIndex下的逆基数(radical inverse)值，用于构造Halton序列
 Float RadicalInverse(int baseIndex, uint64_t a);
+// ComputeRadicalInversePermutations: 计算所有基数的排列，用于打乱的逆基数
 std::vector<uint16_t> ComputeRadicalInversePermutations(RNG &rng);
 static PBRT_CONSTEXPR int PrimeTableSize = 1000;
-extern const int Primes[PrimeTableSize];
+extern const int Primes[PrimeTableSize];  // 前1000个素数表
+// ScrambledRadicalInverse: 计算打乱的逆基数，减少规则模式的视觉伪影
 Float ScrambledRadicalInverse(int baseIndex, uint64_t a, const uint16_t *perm);
-extern const int PrimeSums[PrimeTableSize];
+extern const int PrimeSums[PrimeTableSize];  // 素数前缀和表
 inline void Sobol2D(int nSamplesPerPixelSample, int nPixelSamples,
                     Point2f *samples, RNG &rng);
-extern uint32_t CMaxMinDist[17][32];
+extern uint32_t CMaxMinDist[17][32];  // Sobol'序列的最大最小距离矩阵
 inline uint64_t SobolIntervalToIndex(const uint32_t log2Resolution,
                                      uint64_t sampleNum, const Point2i &p);
 inline float SobolSampleFloat(int64_t index, int dimension,
@@ -64,6 +69,7 @@ inline double SobolSampleDouble(int64_t index, int dimension,
                                 uint64_t scramble = 0);
 
 // Low Discrepancy Inline Functions
+// ReverseBits32: 反转32位整数的二进制位顺序
 inline uint32_t ReverseBits32(uint32_t n) {
     n = (n << 16) | (n >> 16);
     n = ((n & 0x00ff00ff) << 8) | ((n & 0xff00ff00) >> 8);
@@ -73,12 +79,14 @@ inline uint32_t ReverseBits32(uint32_t n) {
     return n;
 }
 
+// ReverseBits64: 反转64位整数的二进制位顺序
 inline uint64_t ReverseBits64(uint64_t n) {
     uint64_t n0 = ReverseBits32((uint32_t)n);
     uint64_t n1 = ReverseBits32((uint32_t)(n >> 32));
     return (n0 << 32) | n1;
 }
 
+// InverseRadicalInverse: 逆基数逆变换，将逆基数序列的值映射回索引
 template <int base>
 inline uint64_t InverseRadicalInverse(uint64_t inverse, int nDigits) {
     uint64_t index = 0;
@@ -90,6 +98,7 @@ inline uint64_t InverseRadicalInverse(uint64_t inverse, int nDigits) {
     return index;
 }
 
+// MultiplyGenerator: 将生成器矩阵C应用于索引a，用于Sobol'序列生成
 inline uint32_t MultiplyGenerator(const uint32_t *C, uint32_t a) {
     uint32_t v = 0;
     for (int i = 0; a != 0; ++i, a >>= 1)
@@ -97,6 +106,7 @@ inline uint32_t MultiplyGenerator(const uint32_t *C, uint32_t a) {
     return v;
 }
 
+// SampleGeneratorMatrix: 使用生成器矩阵和加扰值生成[0,1)范围的浮点样本
 inline Float SampleGeneratorMatrix(const uint32_t *C, uint32_t a,
                                    uint32_t scramble = 0) {
 #ifndef PBRT_HAVE_HEX_FP_CONSTANTS
@@ -108,8 +118,10 @@ inline Float SampleGeneratorMatrix(const uint32_t *C, uint32_t a,
 #endif
 }
 
+// GrayCode: 计算格雷码，用于生成连续样本间的按位差异最小化
 inline uint32_t GrayCode(uint32_t v) { return (v >> 1) ^ v; }
 
+// GrayCodeSample: 使用格雷码顺序快速生成一维低差异样本序列
 inline void GrayCodeSample(const uint32_t *C, uint32_t n, uint32_t scramble,
                            Float *p) {
     uint32_t v = scramble;

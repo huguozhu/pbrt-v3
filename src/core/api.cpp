@@ -31,6 +31,14 @@
  */
 
 // core/api.cpp*
+//
+// 此文件是 pbrt 渲染器的核心 API 实现层。
+// 实现了场景描述语言中所有 pbrt* 前缀的命令，包括：
+// 变换操作（Translate/Rotate/Scale 等）、相机/胶片/采样器/积分器等
+// 组件的创建与配置、材质系统、灯光系统以及场景构建与渲染控制。
+// 同时也包含 ObjectInstance、AttributeBegin/End 等层次化场景管理功能。
+//
+
 #include "api.h"
 #include "parallel.h"
 #include "paramset.h"
@@ -423,6 +431,11 @@ std::vector<std::shared_ptr<Shape>> MakeShapes(const std::string &name,
     } while (false) /* swallow trailing semicolon */
 
 // Object Creation Function Definitions
+
+// 根据名称和参数集创建形状对象的工厂函数。
+// 支持 sphere、cylinder、disk、cone、paraboloid、hyperboloid、curve、
+// trianglemesh、plymesh、heightfield、loopsubdiv、nurbs 等形状类型。
+// 同时处理 -toply 模式下的 PLY 文件导出。
 std::vector<std::shared_ptr<Shape>> MakeShapes(const std::string &name,
                                                const Transform *object2world,
                                                const Transform *world2object,
@@ -534,6 +547,10 @@ std::vector<std::shared_ptr<Shape>> MakeShapes(const std::string &name,
 
 STAT_COUNTER("Scene/Materials created", nMaterialsCreated);
 
+// 根据材质名称和纹理参数创建材质的工厂函数。
+// 支持 matte、plastic、translucent、glass、mirror、hair、disney、
+// mix、metal、substrate、uber、subsurface、kdsubsurface、fourier 等材质类型。
+// 对于 mix 材质，会查找 namedMaterial 中定义的两个子材质。
 std::shared_ptr<Material> MakeMaterial(const std::string &name,
                                        const TextureParams &mp) {
     Material *material = nullptr;
@@ -606,6 +623,8 @@ std::shared_ptr<Material> MakeMaterial(const std::string &name,
     return std::shared_ptr<Material>(material);
 }
 
+// 创建 Float 纹理的工厂函数。支持 constant、scale、mix、bilerp、
+// imagemap、uv、checkerboard、dots、fbm、wrinkled、marble、windy、ptex 等纹理类型。
 std::shared_ptr<Texture<Float>> MakeFloatTexture(const std::string &name,
                                                  const Transform &tex2world,
                                                  const TextureParams &tp) {
@@ -642,6 +661,7 @@ std::shared_ptr<Texture<Float>> MakeFloatTexture(const std::string &name,
     return std::shared_ptr<Texture<Float>>(tex);
 }
 
+// 创建 Spectrum 纹理的工厂函数。支持的纹理类型与 Float 纹理一一对应。
 std::shared_ptr<Texture<Spectrum>> MakeSpectrumTexture(
     const std::string &name, const Transform &tex2world,
     const TextureParams &tp) {
@@ -678,6 +698,8 @@ std::shared_ptr<Texture<Spectrum>> MakeSpectrumTexture(
     return std::shared_ptr<Texture<Spectrum>>(tex);
 }
 
+// 创建介质的工厂函数。支持 homogeneous（均匀）和 heterogeneous（非均匀/网格密度）介质。
+// 从参数集中读取散射系数 sigma_a 和 sigma_s、各向异性参数 g 以及缩放因子。
 std::shared_ptr<Medium> MakeMedium(const std::string &name,
                                    const ParamSet &paramSet,
                                    const Transform &medium2world) {
@@ -726,6 +748,7 @@ std::shared_ptr<Medium> MakeMedium(const std::string &name,
     return std::shared_ptr<Medium>(m);
 }
 
+// 创建非面光源的工厂函数。支持 point、spot、goniometric、projection、distant、infinite 等类型。
 std::shared_ptr<Light> MakeLight(const std::string &name,
                                  const ParamSet &paramSet,
                                  const Transform &light2world,
@@ -752,6 +775,7 @@ std::shared_ptr<Light> MakeLight(const std::string &name,
     return light;
 }
 
+// 创建面光源（AreaLight）的工厂函数。面光源与几何形状关联，为形状赋予自发光属性。
 std::shared_ptr<AreaLight> MakeAreaLight(const std::string &name,
                                          const Transform &light2world,
                                          const MediumInterface &mediumInterface,
@@ -767,6 +791,7 @@ std::shared_ptr<AreaLight> MakeAreaLight(const std::string &name,
     return area;
 }
 
+// 创建加速结构的工厂函数。支持 bvh（层次包围盒）和 kdtree（Kd 树）加速器。
 std::shared_ptr<Primitive> MakeAccelerator(
     const std::string &name,
     std::vector<std::shared_ptr<Primitive>> prims,
@@ -782,6 +807,8 @@ std::shared_ptr<Primitive> MakeAccelerator(
     return accel;
 }
 
+// 创建相机对象的工厂函数。支持 perspective（透视）、orthographic（正交）、
+// realistic（真实感）和 environment（环境）相机类型。
 Camera *MakeCamera(const std::string &name, const ParamSet &paramSet,
                    const TransformSet &cam2worldSet, Float transformStart,
                    Float transformEnd, Film *film) {
@@ -813,6 +840,8 @@ Camera *MakeCamera(const std::string &name, const ParamSet &paramSet,
     return camera;
 }
 
+// 创建采样器的工厂函数。支持 lowdiscrepancy、maxmindist、halton、
+// sobol、random、stratified 等采样策略。
 std::shared_ptr<Sampler> MakeSampler(const std::string &name,
                                      const ParamSet &paramSet,
                                      const Film *film) {
@@ -835,6 +864,7 @@ std::shared_ptr<Sampler> MakeSampler(const std::string &name,
     return std::shared_ptr<Sampler>(sampler);
 }
 
+// 创建图像重构滤波器的工厂函数。支持 box、gaussian、mitchell、sinc、triangle 滤波器。
 std::unique_ptr<Filter> MakeFilter(const std::string &name,
                                    const ParamSet &paramSet) {
     Filter *filter = nullptr;
@@ -856,6 +886,7 @@ std::unique_ptr<Filter> MakeFilter(const std::string &name,
     return std::unique_ptr<Filter>(filter);
 }
 
+// 创建胶片对象的工厂函数。目前支持 "image" 类型胶片。
 Film *MakeFilm(const std::string &name, const ParamSet &paramSet,
                std::unique_ptr<Filter> filter) {
     Film *film = nullptr;
@@ -868,6 +899,9 @@ Film *MakeFilm(const std::string &name, const ParamSet &paramSet,
 }
 
 // API Function Definitions
+
+// 初始化 pbrt 渲染系统。必须在所有 pbrt* API 调用之前调用。
+// 设置渲染选项、初始化全局状态、采样光谱、并行系统和性能分析器。
 void pbrtInit(const Options &opt) {
     PbrtOptions = opt;
     // API Initialization
@@ -885,6 +919,7 @@ void pbrtInit(const Options &opt) {
     InitProfiler();
 }
 
+// 清理 pbrt 渲染系统。在渲染完成后调用，释放并行系统和性能分析器资源。
 void pbrtCleanup() {
     // API Cleanup
     if (currentApiState == APIState::Uninitialized)
@@ -896,6 +931,7 @@ void pbrtCleanup() {
     CleanupProfiler();
 }
 
+// 将当前变换重置为单位矩阵。
 void pbrtIdentity() {
     VERIFY_INITIALIZED("Identity");
     FOR_ACTIVE_TRANSFORMS(curTransform[i] = Transform();)
@@ -903,6 +939,7 @@ void pbrtIdentity() {
         printf("%*sIdentity\n", catIndentCount, "");
 }
 
+// 在当前变换上附加一个平移变换。平移向量为 (dx, dy, dz)。
 void pbrtTranslate(Float dx, Float dy, Float dz) {
     VERIFY_INITIALIZED("Translate");
     FOR_ACTIVE_TRANSFORMS(curTransform[i] = curTransform[i] *
@@ -912,6 +949,7 @@ void pbrtTranslate(Float dx, Float dy, Float dz) {
                dz);
 }
 
+// 用给定的 4x4 矩阵直接设置当前变换。
 void pbrtTransform(Float tr[16]) {
     VERIFY_INITIALIZED("Transform");
     FOR_ACTIVE_TRANSFORMS(
@@ -925,6 +963,7 @@ void pbrtTransform(Float tr[16]) {
     }
 }
 
+// 在当前变换上右乘一个 4x4 矩阵。
 void pbrtConcatTransform(Float tr[16]) {
     VERIFY_INITIALIZED("ConcatTransform");
     FOR_ACTIVE_TRANSFORMS(
@@ -940,6 +979,7 @@ void pbrtConcatTransform(Float tr[16]) {
     }
 }
 
+// 在当前变换上附加一个旋转变换。绕轴 (dx, dy, dz) 旋转 angle 度。
 void pbrtRotate(Float angle, Float dx, Float dy, Float dz) {
     VERIFY_INITIALIZED("Rotate");
     FOR_ACTIVE_TRANSFORMS(curTransform[i] =
@@ -950,6 +990,7 @@ void pbrtRotate(Float angle, Float dx, Float dy, Float dz) {
                dx, dy, dz);
 }
 
+// 在当前变换上附加一个缩放变换。三个轴上的缩放因子分别为 sx, sy, sz。
 void pbrtScale(Float sx, Float sy, Float sz) {
     VERIFY_INITIALIZED("Scale");
     FOR_ACTIVE_TRANSFORMS(curTransform[i] =
@@ -958,6 +999,7 @@ void pbrtScale(Float sx, Float sy, Float sz) {
         printf("%*sScale %.9g %.9g %.9g\n", catIndentCount, "", sx, sy, sz);
 }
 
+// 设置观察变换。从视点 (ex,ey,ez) 看向目标点 (lx,ly,lz)，朝上方向为 (ux,uy,uz)。
 void pbrtLookAt(Float ex, Float ey, Float ez, Float lx, Float ly, Float lz,
                 Float ux, Float uy, Float uz) {
     VERIFY_INITIALIZED("LookAt");
@@ -972,6 +1014,7 @@ void pbrtLookAt(Float ex, Float ey, Float ez, Float lx, Float ly, Float lz,
             catIndentCount + 8, "", ux, uy, uz);
 }
 
+// 将当前变换保存为一个命名的坐标系，供后续 CoordSysTransform 引用。
 void pbrtCoordinateSystem(const std::string &name) {
     VERIFY_INITIALIZED("CoordinateSystem");
     namedCoordinateSystems[name] = curTransform;
@@ -980,6 +1023,7 @@ void pbrtCoordinateSystem(const std::string &name) {
                name.c_str());
 }
 
+// 将当前变换切换为之前通过 CoordinateSystem 保存的命名坐标系。
 void pbrtCoordSysTransform(const std::string &name) {
     VERIFY_INITIALIZED("CoordSysTransform");
     if (namedCoordinateSystems.find(name) != namedCoordinateSystems.end())
@@ -991,24 +1035,28 @@ void pbrtCoordSysTransform(const std::string &name) {
                name.c_str());
 }
 
+// 设置所有变换（开始时间和结束时间变换）均为活跃状态。
 void pbrtActiveTransformAll() {
     activeTransformBits = AllTransformsBits;
     if (PbrtOptions.cat || PbrtOptions.toPly)
         printf("%*sActiveTransform All\n", catIndentCount, "");
 }
 
+// 设置只有结束时间变换为活跃状态。
 void pbrtActiveTransformEndTime() {
     activeTransformBits = EndTransformBits;
     if (PbrtOptions.cat || PbrtOptions.toPly)
         printf("%*sActiveTransform EndTime\n", catIndentCount, "");
 }
 
+// 设置只有开始时间变换为活跃状态。
 void pbrtActiveTransformStartTime() {
     activeTransformBits = StartTransformBits;
     if (PbrtOptions.cat || PbrtOptions.toPly)
         printf("%*sActiveTransform StartTime\n", catIndentCount, "");
 }
 
+// 设置动画变换的开始时间和结束时间。
 void pbrtTransformTimes(Float start, Float end) {
     VERIFY_OPTIONS("TransformTimes");
     renderOptions->transformStartTime = start;
@@ -1018,6 +1066,7 @@ void pbrtTransformTimes(Float start, Float end) {
                end);
 }
 
+// 设置像素重构滤波器类型和参数（在 Options 块中调用）。
 void pbrtPixelFilter(const std::string &name, const ParamSet &params) {
     VERIFY_OPTIONS("PixelFilter");
     renderOptions->FilterName = name;
@@ -1029,6 +1078,7 @@ void pbrtPixelFilter(const std::string &name, const ParamSet &params) {
     }
 }
 
+// 设置胶片类型和参数（在 Options 块中调用）。
 void pbrtFilm(const std::string &type, const ParamSet &params) {
     VERIFY_OPTIONS("Film");
     renderOptions->FilmParams = params;
@@ -1040,6 +1090,7 @@ void pbrtFilm(const std::string &type, const ParamSet &params) {
     }
 }
 
+// 设置采样器类型和参数（在 Options 块中调用）。
 void pbrtSampler(const std::string &name, const ParamSet &params) {
     VERIFY_OPTIONS("Sampler");
     renderOptions->SamplerName = name;
@@ -1051,6 +1102,7 @@ void pbrtSampler(const std::string &name, const ParamSet &params) {
     }
 }
 
+// 设置加速结构类型和参数（在 Options 块中调用）。
 void pbrtAccelerator(const std::string &name, const ParamSet &params) {
     VERIFY_OPTIONS("Accelerator");
     renderOptions->AcceleratorName = name;
@@ -1062,6 +1114,7 @@ void pbrtAccelerator(const std::string &name, const ParamSet &params) {
     }
 }
 
+// 设置积分器类型和参数（在 Options 块中调用）。
 void pbrtIntegrator(const std::string &name, const ParamSet &params) {
     VERIFY_OPTIONS("Integrator");
     renderOptions->IntegratorName = name;
@@ -1073,6 +1126,8 @@ void pbrtIntegrator(const std::string &name, const ParamSet &params) {
     }
 }
 
+// 设置相机类型和参数（在 Options 块中调用）。
+// 同时将当前变换的逆矩阵设置为相机到世界的变换，并保存 "camera" 坐标系。
 void pbrtCamera(const std::string &name, const ParamSet &params) {
     VERIFY_OPTIONS("Camera");
     renderOptions->CameraName = name;
@@ -1086,6 +1141,7 @@ void pbrtCamera(const std::string &name, const ParamSet &params) {
     }
 }
 
+// 创建命名的介质对象，存储到 renderOptions 中供后续 MediumInterface 引用。
 void pbrtMakeNamedMedium(const std::string &name, const ParamSet &params) {
     VERIFY_INITIALIZED("MakeNamedMedium");
     WARN_IF_ANIMATED_TRANSFORM("MakeNamedMedium");
@@ -1104,6 +1160,8 @@ void pbrtMakeNamedMedium(const std::string &name, const ParamSet &params) {
     }
 }
 
+// 设置当前图形状态中表面内部和外部介质的名称。
+// 这些名称需与 MakeNamedMedium 中定义的名称匹配。
 void pbrtMediumInterface(const std::string &insideName,
                          const std::string &outsideName) {
     VERIFY_INITIALIZED("MediumInterface");
@@ -1115,6 +1173,8 @@ void pbrtMediumInterface(const std::string &insideName,
                insideName.c_str(), outsideName.c_str());
 }
 
+// 开始世界块（World Block）。在 WorldBegin 之后所有的变换和几何操作
+// 都是在世界空间中进行的，直到 WorldEnd。
 void pbrtWorldBegin() {
     VERIFY_OPTIONS("WorldBegin");
     currentApiState = APIState::WorldBlock;
@@ -1125,6 +1185,8 @@ void pbrtWorldBegin() {
         printf("\n\nWorldBegin\n\n");
 }
 
+// 开始属性块（Attribute Block）。保存当前图形状态、变换矩阵和活跃变换位，
+// 推入栈中以便后续 AttributeEnd 恢复。
 void pbrtAttributeBegin() {
     VERIFY_WORLD("AttributeBegin");
     pushedGraphicsStates.push_back(graphicsState);
@@ -1138,6 +1200,7 @@ void pbrtAttributeBegin() {
     }
 }
 
+// 结束属性块。从栈中恢复之前保存的图形状态、变换矩阵和活跃变换位。
 void pbrtAttributeEnd() {
     VERIFY_WORLD("AttributeEnd");
     if (!pushedGraphicsStates.size()) {
@@ -1158,6 +1221,8 @@ void pbrtAttributeEnd() {
     }
 }
 
+// 开始变换块（Transform Block）。保存当前变换到栈中，
+// 允许临时修改变换并在 TransformEnd 时恢复。
 void pbrtTransformBegin() {
     VERIFY_WORLD("TransformBegin");
     pushedTransforms.push_back(curTransform);
@@ -1168,6 +1233,7 @@ void pbrtTransformBegin() {
     }
 }
 
+// 结束变换块。从栈中恢复之前保存的变换矩阵和活跃变换位。
 void pbrtTransformEnd() {
     VERIFY_WORLD("TransformEnd");
     if (!pushedTransforms.size()) {
@@ -1186,6 +1252,8 @@ void pbrtTransformEnd() {
     }
 }
 
+// 定义纹理对象。支持 float 和 color/spectrum 两种纹理类型。
+// 纹理通过 MakeFloatTexture 或 MakeSpectrumTexture 创建，并存入当前图形状态的纹理映射表。
 void pbrtTexture(const std::string &name, const std::string &type,
                  const std::string &texname, const ParamSet &params) {
     VERIFY_WORLD("Texture");
@@ -1237,6 +1305,7 @@ void pbrtTexture(const std::string &name, const std::string &type,
         Error("Texture type \"%s\" unknown.", type.c_str());
 }
 
+// 设置当前材质。通过 MakeMaterial 创建材质实例，并更新当前图形状态的材质信息。
 void pbrtMaterial(const std::string &name, const ParamSet &params) {
     VERIFY_WORLD("Material");
     ParamSet emptyParams;
@@ -1253,6 +1322,7 @@ void pbrtMaterial(const std::string &name, const ParamSet &params) {
     }
 }
 
+// 创建命名材质，供后续 NamedMaterial 引用。材质类型在参数集的 "type" 字段中指定。
 void pbrtMakeNamedMaterial(const std::string &name, const ParamSet &params) {
     VERIFY_WORLD("MakeNamedMaterial");
     // error checking, warning if replace, what to use for transform?
@@ -1284,6 +1354,7 @@ void pbrtMakeNamedMaterial(const std::string &name, const ParamSet &params) {
     }
 }
 
+// 引用之前通过 MakeNamedMaterial 创建的命名材质，设置为当前材质。
 void pbrtNamedMaterial(const std::string &name) {
     VERIFY_WORLD("NamedMaterial");
     if (PbrtOptions.cat || PbrtOptions.toPly) {
@@ -1299,6 +1370,7 @@ void pbrtNamedMaterial(const std::string &name) {
     graphicsState.currentMaterial = iter->second;
 }
 
+// 创建光源（非面光源）。通过 MakeLight 创建光源对象并添加到场景灯光列表中。
 void pbrtLightSource(const std::string &name, const ParamSet &params) {
     VERIFY_WORLD("LightSource");
     WARN_IF_ANIMATED_TRANSFORM("LightSource");
@@ -1315,6 +1387,7 @@ void pbrtLightSource(const std::string &name, const ParamSet &params) {
     }
 }
 
+// 设置面光源。面光源会与后续的 Shape 命令关联，使形状具有自发光属性。
 void pbrtAreaLightSource(const std::string &name, const ParamSet &params) {
     VERIFY_WORLD("AreaLightSource");
     graphicsState.areaLight = name;
@@ -1326,6 +1399,8 @@ void pbrtAreaLightSource(const std::string &name, const ParamSet &params) {
     }
 }
 
+// 创建几何形状。处理静态和动画两种变换模式下的形状创建，
+// 为形状分配材质，可选地创建面光源，并添加到场景图或当前实例中。
 void pbrtShape(const std::string &name, const ParamSet &params) {
     VERIFY_WORLD("Shape");
     std::vector<std::shared_ptr<Primitive>> prims;
@@ -1418,12 +1493,9 @@ void pbrtShape(const std::string &name, const ParamSet &params) {
     }
 }
 
-// Attempt to determine if the ParamSet for a shape may provide a value for
-// its material's parameters. Unfortunately, materials don't provide an
-// explicit representation of their parameters that we can query and
-// cross-reference with the parameter values available from the shape.
-//
-// Therefore, we'll apply some "heuristics".
+// 启发式函数：判断形状的 ParamSet 是否可能包含材质参数。
+// 由于材质没有显式参数描述，我们通过检查参数名称和数量来推断。
+// 这用于决定是否为形状创建唯一的材质实例。
 bool shapeMaySetMaterialParameters(const ParamSet &ps) {
     for (const auto &param : ps.textures)
         // Any texture other than one for an alpha mask is almost certainly
@@ -1475,6 +1547,8 @@ bool shapeMaySetMaterialParameters(const ParamSet &ps) {
     return false;
 }
 
+// 为形状获取适当的材质。如果形状参数提供了材质参数值，
+// 则创建新的材质实例，否则复用当前材质。
 std::shared_ptr<Material> GraphicsState::GetMaterialForShape(
     const ParamSet &shapeParams) {
     CHECK(currentMaterial);
@@ -1489,6 +1563,8 @@ std::shared_ptr<Material> GraphicsState::GetMaterialForShape(
         return currentMaterial->material;
 }
 
+// 根据当前 GraphicsState 中设置的介质名称创建 MediumInterface。
+// 在 renderOptions 的 namedMedia 表中查找对应的介质对象。
 MediumInterface GraphicsState::CreateMediumInterface() {
     MediumInterface m;
     if (currentInsideMedium != "") {
@@ -1510,6 +1586,8 @@ MediumInterface GraphicsState::CreateMediumInterface() {
     return m;
 }
 
+// 翻转法线朝向。切换当前图形状态的 reverseOrientation 标志，
+// 用于修正几何体法线方向。
 void pbrtReverseOrientation() {
     VERIFY_WORLD("ReverseOrientation");
     graphicsState.reverseOrientation = !graphicsState.reverseOrientation;
@@ -1517,6 +1595,8 @@ void pbrtReverseOrientation() {
         printf("%*sReverseOrientation\n", catIndentCount, "");
 }
 
+// 开始对象实例定义。保存当前属性状态，并在 renderOptions 中创建
+// 当前实例的 Primitive 列表。
 void pbrtObjectBegin(const std::string &name) {
     VERIFY_WORLD("ObjectBegin");
     pbrtAttributeBegin();
@@ -1530,6 +1610,7 @@ void pbrtObjectBegin(const std::string &name) {
 
 STAT_COUNTER("Scene/Object instances created", nObjectInstancesCreated);
 
+// 结束对象实例定义。恢复之前保存的属性状态。
 void pbrtObjectEnd() {
     VERIFY_WORLD("ObjectEnd");
     if (!renderOptions->currentInstance)
@@ -1543,6 +1624,8 @@ void pbrtObjectEnd() {
 
 STAT_COUNTER("Scene/Object instances used", nObjectInstancesUsed);
 
+// 在当前变换下实例化之前通过 ObjectBegin/ObjectEnd 定义的对象。
+// 为实例创建 TransformedPrimitive 包装器。
 void pbrtObjectInstance(const std::string &name) {
     VERIFY_WORLD("ObjectInstance");
     if (PbrtOptions.cat || PbrtOptions.toPly) {
@@ -1587,6 +1670,8 @@ void pbrtObjectInstance(const std::string &name) {
     renderOptions->primitives.push_back(prim);
 }
 
+// 结束世界块。创建积分器和场景，调用积分器的 Render 方法进行渲染。
+// 渲染完成后清理资源、报告统计信息。
 void pbrtWorldEnd() {
     VERIFY_WORLD("WorldEnd");
     // Ensure there are no pushed graphics states
@@ -1648,6 +1733,8 @@ void pbrtWorldEnd() {
                                  namedCoordinateSystems.end());
 }
 
+// 创建场景对象。使用配置好的加速器将所有图元组织为加速结构，
+// 并结合所有已定义的光源构造 Scene。
 Scene *RenderOptions::MakeScene() {
     std::shared_ptr<Primitive> accelerator =
         MakeAccelerator(AcceleratorName, std::move(primitives), AcceleratorParams);
@@ -1659,6 +1746,8 @@ Scene *RenderOptions::MakeScene() {
     return scene;
 }
 
+// 创建积分器对象。先创建相机和采样器，然后根据配置的积分器名称
+// 创建对应的积分器实例（whitted、directlighting、path、volpath、bdpt、mlt、ao、sppm 等）。
 Integrator *RenderOptions::MakeIntegrator() const {
     std::shared_ptr<const Camera> camera(MakeCamera());
     if (!camera) {
@@ -1713,6 +1802,7 @@ Integrator *RenderOptions::MakeIntegrator() const {
     return integrator;
 }
 
+// 创建相机对象。依次创建滤波器、胶片，然后调用 MakeCamera 构造相机。
 Camera *RenderOptions::MakeCamera() const {
     std::unique_ptr<Filter> filter = MakeFilter(FilterName, FilterParams);
     Film *film = MakeFilm(FilmName, FilmParams, std::move(filter));

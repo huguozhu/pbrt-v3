@@ -39,6 +39,7 @@
 #define PBRT_TEXTURES_CONSTANT_H
 
 // textures/constant.h*
+// 模块功能：常量纹理（ConstantTexture），返回固定值，用于测试或作为默认纹理
 #include "pbrt.h"
 #include "texture.h"
 #include "paramset.h"
@@ -46,6 +47,7 @@
 namespace pbrt {
 
 // ConstantTexture Declarations
+// 常量纹理类声明：始终返回一个预设的常量值
 template <typename T>
 class ConstantTexture : public Texture<T> {
   public:

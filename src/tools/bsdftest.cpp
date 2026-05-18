@@ -1,4 +1,5 @@
 // Kevin Egan
+// 文件功能：BSDF测试工具，用于验证和调试各种BRDF模型的采样和评估
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,6 +18,7 @@ static MemoryArena arena;
 static RNG rng;
 
 // extract the red channel from a Spectrum class
+// 从光谱类中提取红色通道值
 double spectrumRedValue(const Spectrum& s) { return s[0]; }
 
 typedef void (*CreateBSDFFunc)(BSDF* bsdf);
@@ -45,10 +47,12 @@ int main(int argc, char* argv[]) {
     pbrtInit(opt);
 
     // number of monte carlo estimates
+    // 蒙特卡洛采样估计次数（当前设置为1000万次）
     // const int estimates = 1;
     const int estimates = 10000000;
 
     // radiance of uniform environment map
+    // 均匀环境贴图的辐射亮度
     const double environmentRadiance = 1.0;
 
     fprintf(stderr,
@@ -162,11 +166,13 @@ int main(int argc, char* argv[]) {
     }
 
     // for each bsdf model
+    // 对每个BRDF模型进行测试
     for (int model = 0; model < numModels; model++) {
         BSDF* bsdf;
 
         // create BSDF which requires creating a Shape, casting a Ray
         // that hits the shape to get a SurfaceInteraction object.
+        // 创建BSDF：需要先创建形状并投射光线以获取表面交互信息
         {
             Transform t = RotateX(-90);
             bool reverseOrientation = false;
@@ -187,12 +193,14 @@ int main(int argc, char* argv[]) {
         }
 
         // facing directly at normal
+        // 视线方向：正对法线方向（从正面观察表面）
         Vector3f woL = Normalize(Vector3f(0, 0, 1));
         Vector3f wo = bsdf->LocalToWorld(woL);
         // was bsdf->dgShading.nn
         const Normal3f n = Normal3f(bsdf->LocalToWorld(Vector3f(0, 0, 1)));
 
         // for each method of generating samples over the hemisphere
+        // 对每种半球采样方法进行测试
         for (int gen = 0; gen < numGenerators; gen++) {
             double redSum = 0.0;
 
@@ -261,6 +269,7 @@ int main(int argc, char* argv[]) {
             int goodSamples = estimates - badSamples;
 
             // print results
+            // 打印测试结果：显示直方图和辐射亮度估计值
             fprintf(stderr,
                     "*** BRDF: '%s', Samples: '%s'\n\n"
                     "wi histogram showing the relative weight in each bin\n"
@@ -294,12 +303,14 @@ int main(int argc, char* argv[]) {
 void Gen_Sample_f(BSDF* bsdf, const Vector3f& wo, Vector3f* wi, Float* pdf,
                   Spectrum* f) {
     // only glossy or diffuse reflections (no specular reflections)
+    // 通过BSDF重要性采样生成方向：仅考虑光泽和漫反射（不含镜面反射）
     BxDFType inflags = BxDFType(BSDF_REFLECTION | BSDF_DIFFUSE | BSDF_GLOSSY);
     BxDFType outflags;
     Point2f sample {rng.UniformFloat(), rng.UniformFloat()};
     *f = bsdf->Sample_f(wo, wi, sample, pdf, inflags, &outflags);
 
     // double check bsdf->Pdf() gives us the same answer
+    // 双重检查：验证bsdf->Pdf()返回的值与Sample_f中的pdf一致
     Vector3f wiL = bsdf->WorldToLocal(*wi);
     float wiCosTheta = wiL.z;
     bool validSample = (wiCosTheta > 1e-7);
@@ -322,6 +333,7 @@ void Gen_Sample_f(BSDF* bsdf, const Vector3f& wo, Vector3f* wi, Float* pdf,
     }
 }
 
+// 余弦加权半球采样：使用余弦分布采样方向并评估BSDF
 void Gen_CosHemisphere(BSDF* bsdf, const Vector3f& wo, Vector3f* wi, Float* pdf,
                        Spectrum* f) {
     float u1 = rng.UniformFloat();
@@ -334,6 +346,7 @@ void Gen_CosHemisphere(BSDF* bsdf, const Vector3f& wo, Vector3f* wi, Float* pdf,
     *f = bsdf->f(wo, *wi);
 }
 
+// 均匀半球采样：使用均匀分布采样方向并评估BSDF
 void Gen_UniformHemisphere(BSDF* bsdf, const Vector3f& wo, Vector3f* wi,
                            Float* pdf, Spectrum* f) {
     float u1 = rng.UniformFloat();
@@ -345,11 +358,13 @@ void Gen_UniformHemisphere(BSDF* bsdf, const Vector3f& wo, Vector3f* wi,
     *f = bsdf->f(wo, *wi);
 }
 
+// 创建朗伯反射BSDF
 void createLambertian(BSDF* bsdf) {
     Spectrum Kd(1);
     bsdf->Add(ARENA_ALLOC(arena, LambertianReflection)(Kd));
 }
 
+// 创建微表面反射BSDF：支持Beckmann和Trowbridge-Reitz分布
 void createMicrofacet(BSDF* bsdf, bool beckmann, bool samplevisible,
                       float roughx, float roughy) {
     Spectrum Ks(1);
@@ -371,6 +386,7 @@ void createMicrofacet(BSDF* bsdf, bool beckmann, bool samplevisible,
     bsdf->Add(bxdf);
 }
 
+// 创建FresnelBlend BSDF：结合漫反射和光泽反射的菲涅尔混合模型
 void createFresnelBlend(BSDF* bsdf, bool beckmann, bool samplevisible,
                         float roughx, float roughy)
 {
@@ -393,6 +409,7 @@ void createFresnelBlend(BSDF* bsdf, bool beckmann, bool samplevisible,
     bsdf->Add(bxdf);
 }
 
+// 创建双微表面反射BSDF：包含两个不同粗糙度的微表面层
 void createMicrofacet30and0(BSDF* bsdf, bool beckmann) {
     Spectrum Ks(0.5);
     MicrofacetDistribution *distrib1, *distrib2;
@@ -424,6 +441,7 @@ void createMicrofacet30and0(BSDF* bsdf, bool beckmann) {
     bsdf->Add(bxdf2);
 }
 
+// 创建Oren-Nayar漫反射BSDF：sigma=0（等效于朗伯反射）
 void createOrenNayar0(BSDF* bsdf) {
     Spectrum Kd(1);
     float sigma = 0.0;
@@ -431,6 +449,7 @@ void createOrenNayar0(BSDF* bsdf) {
     bsdf->Add(bxdf);
 }
 
+// 创建Oren-Nayar漫反射BSDF：sigma=20度（粗糙漫反射表面）
 void createOrenNayar20(BSDF* bsdf) {
     Spectrum Kd(1);
     float sigma = 20.0;

@@ -39,12 +39,15 @@
 #define PBRT_MATERIALS_TRANSLUCENT_H
 
 // materials/translucent.h*
+// 文件描述: 半透明材质的头文件。实现了同时具有漫反射/透射和微表面高光反射/透射的材质。
 #include "pbrt.h"
 #include "material.h"
 
 namespace pbrt {
 
 // TranslucentMaterial Declarations
+// 半透明材质类，支持漫反射(Kd)、高光(Ks)、反射比例(reflect)、透射比例(transmit)，
+// 以及粗糙度(roughness)控制，用于模拟半透明表面。
 class TranslucentMaterial : public Material {
   public:
     // TranslucentMaterial Public Methods
@@ -63,19 +66,21 @@ class TranslucentMaterial : public Material {
         bumpMap = bump;
         remapRoughness = remap;
     }
+    // 计算散射函数: 创建半透明材质的BSDF
     void ComputeScatteringFunctions(SurfaceInteraction *si, MemoryArena &arena,
                                     TransportMode mode,
                                     bool allowMultipleLobes) const;
 
   private:
     // TranslucentMaterial Private Data
-    std::shared_ptr<Texture<Spectrum>> Kd, Ks;
-    std::shared_ptr<Texture<Float>> roughness;
-    std::shared_ptr<Texture<Spectrum>> reflect, transmit;
-    std::shared_ptr<Texture<Float>> bumpMap;
-    bool remapRoughness;
+    std::shared_ptr<Texture<Spectrum>> Kd, Ks;   // 漫反射和高光颜色
+    std::shared_ptr<Texture<Float>> roughness;    // 表面粗糙度
+    std::shared_ptr<Texture<Spectrum>> reflect, transmit;  // 反射和透射比例
+    std::shared_ptr<Texture<Float>> bumpMap;      // 凹凸贴图
+    bool remapRoughness;                          // 是否重映射粗糙度
 };
 
+// 创建半透明材质对象的工厂函数
 TranslucentMaterial *CreateTranslucentMaterial(const TextureParams &mp);
 
 }  // namespace pbrt

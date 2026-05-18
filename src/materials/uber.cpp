@@ -32,6 +32,8 @@
 
 
 // materials/uber.cpp*
+// 文件描述: Uber(万能)材质的实现。综合了漫反射、微表面高光、
+// 镜面反射、镜面透射和透明度控制。
 #include "materials/uber.h"
 #include "spectrum.h"
 #include "reflection.h"
@@ -42,29 +44,35 @@
 namespace pbrt {
 
 // UberMaterial Method Definitions
+// 计算散射函数: 创建包含透明度、漫反射、高光、镜面反射和透射的综合BSDF
 void UberMaterial::ComputeScatteringFunctions(SurfaceInteraction *si,
                                               MemoryArena &arena,
                                               TransportMode mode,
                                               bool allowMultipleLobes) const {
-    // Perform bump mapping with _bumpMap_, if present
+    // 如果存在凹凸贴图则执行凹凸映射
     if (bumpMap) Bump(bumpMap, si);
     Float e = eta->Evaluate(*si);
 
     Spectrum op = opacity->Evaluate(*si).Clamp();
+    // 透明度处理: 创建SpecularTransmission用于透明效果
     Spectrum t = (-op + Spectrum(1.f)).Clamp();
     if (!t.IsBlack()) {
+        // 有透明度时: 创建SpecularTransmission并设置折射率为1
         si->bsdf = ARENA_ALLOC(arena, BSDF)(*si, 1.f);
         BxDF *tr = ARENA_ALLOC(arena, SpecularTransmission)(t, 1.f, 1.f, mode);
         si->bsdf->Add(tr);
     } else
         si->bsdf = ARENA_ALLOC(arena, BSDF)(*si, e);
 
+    // 漫反射分量: 使用不透明度加权的Kd
     Spectrum kd = op * Kd->Evaluate(*si).Clamp();
     if (!kd.IsBlack()) {
+        // 添加Lambertian漫反射BSDF
         BxDF *diff = ARENA_ALLOC(arena, LambertianReflection)(kd);
         si->bsdf->Add(diff);
     }
 
+    // 高光反射分量(Ks): 使用微表面模型(MicrofacetReflection)
     Spectrum ks = op * Ks->Evaluate(*si).Clamp();
     if (!ks.IsBlack()) {
         Fresnel *fresnel = ARENA_ALLOC(arena, FresnelDielectric)(1.f, e);
@@ -88,18 +96,21 @@ void UberMaterial::ComputeScatteringFunctions(SurfaceInteraction *si,
         si->bsdf->Add(spec);
     }
 
+    // 镜面反射分量(Kr): 使用SpecularReflection
     Spectrum kr = op * Kr->Evaluate(*si).Clamp();
     if (!kr.IsBlack()) {
         Fresnel *fresnel = ARENA_ALLOC(arena, FresnelDielectric)(1.f, e);
         si->bsdf->Add(ARENA_ALLOC(arena, SpecularReflection)(kr, fresnel));
     }
 
+    // 镜面透射分量(Kt): 使用SpecularTransmission
     Spectrum kt = op * Kt->Evaluate(*si).Clamp();
     if (!kt.IsBlack())
         si->bsdf->Add(
             ARENA_ALLOC(arena, SpecularTransmission)(kt, 1.f, e, mode));
 }
 
+// 创建Uber材质对象的工厂函数
 UberMaterial *CreateUberMaterial(const TextureParams &mp) {
     std::shared_ptr<Texture<Spectrum>> Kd =
         mp.GetSpectrumTexture("Kd", Spectrum(0.25f));

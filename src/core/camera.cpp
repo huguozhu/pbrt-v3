@@ -32,6 +32,12 @@
 
 
 // core/camera.cpp*
+//
+// 此文件实现了相机（Camera）基类的主要方法。
+// Camera 是 pbrt 中所有相机类型的抽象基类，定义了从图像样本生成光线的接口，
+// 以及相机对光场重要性采样的方法。具体相机类型（透视、正交、环境等）在子类中实现。
+//
+
 #include "camera.h"
 #include "sampling.h"
 #include "sampler.h"
@@ -39,8 +45,15 @@
 namespace pbrt {
 
 // Camera Method Definitions
+
+// Camera 析构函数 —— 释放关联的 film 对象。
 Camera::~Camera() { delete film; }
 
+// Camera 构造函数。
+// CameraToWorld: 从相机空间到世界空间的动画变换。
+// shutterOpen/shutterClose: 快门开启和关闭时间。
+// film: 与此相机关联的胶片对象。
+// medium: 相机所在介质。
 Camera::Camera(const AnimatedTransform &CameraToWorld, Float shutterOpen,
                Float shutterClose, Film *film, const Medium *medium)
     : CameraToWorld(CameraToWorld),
@@ -57,6 +70,9 @@ Camera::Camera(const AnimatedTransform &CameraToWorld, Float shutterOpen,
             "the system may crash as a result of this.");
 }
 
+// 生成具有差分信息的相机光线，用于计算纹理滤波的屏幕空间导数。
+// 通过在 x 和 y 方向上各偏移半个像素来产生辅助光线，
+// 从而估算光线原点和方向相对于像素位置的偏导数。
 Float Camera::GenerateRayDifferential(const CameraSample &sample,
                                       RayDifferential *rd) const {
     Float wt = GenerateRay(sample, rd);
@@ -96,15 +112,21 @@ Float Camera::GenerateRayDifferential(const CameraSample &sample,
     return wt;
 }
 
+// 计算相机沿给定方向的重要性（importance）We，即相机对场景辐射度的贡献权重。
+// 此方法在基类中未实现，具体子类需要覆盖。
 Spectrum Camera::We(const Ray &ray, Point2f *raster) const {
     LOG(FATAL) << "Camera::We() is not implemented!";
     return Spectrum(0.f);
 }
 
+// 计算相机重要性函数 We 对应的概率密度。
+// pdfPos: 位置的概率密度, pdfDir: 方向的概率密度。
 void Camera::Pdf_We(const Ray &ray, Float *pdfPos, Float *pdfDir) const {
     LOG(FATAL) << "Camera::Pdf_We() is not implemented!";
 }
 
+// 从参考点 ref 对相机方向进行重要性采样，用于双向路径追踪等算法。
+// 采样来自相机的入射方向 wi，并计算该采样对应的概率密度和可见性测试对象。
 Spectrum Camera::Sample_Wi(const Interaction &ref, const Point2f &u,
                            Vector3f *wi, Float *pdf, Point2f *pRaster,
                            VisibilityTester *vis) const {

@@ -32,6 +32,7 @@
 
 
 // integrators/directlighting.cpp*
+// DirectLightingIntegrator实现：仅计算直接光照贡献（漫反射+镜面反射+折射的直接分量），支持UniformSampleAll和UniformSampleOne两种采样策略
 #include "integrators/directlighting.h"
 #include "interaction.h"
 #include "paramset.h"
@@ -42,6 +43,7 @@
 namespace pbrt {
 
 // DirectLightingIntegrator Method Definitions
+// Preprocess：预处理阶段，根据策略为每个光源分配采样数量
 void DirectLightingIntegrator::Preprocess(const Scene &scene,
                                           Sampler &sampler) {
     if (strategy == LightStrategy::UniformSampleAll) {
@@ -62,6 +64,7 @@ void DirectLightingIntegrator::Preprocess(const Scene &scene,
 Spectrum DirectLightingIntegrator::Li(const RayDifferential &ray,
                                       const Scene &scene, Sampler &sampler,
                                       MemoryArena &arena, int depth) const {
+    // DirectLightingIntegrator::Li：计算直接光照，包括直接光源采样、镜面反射和折射
     ProfilePhase p(Prof::SamplerIntegratorLi);
     Spectrum L(0.f);
     // Find closest ray intersection or return background radiance
@@ -77,9 +80,11 @@ Spectrum DirectLightingIntegrator::Li(const RayDifferential &ray,
         return Li(isect.SpawnRay(ray.d), scene, sampler, arena, depth);
     Vector3f wo = isect.wo;
     // Compute emitted light if ray hit an area light source
+    // 如果光线击中了面光源，累加自发光
     L += isect.Le(wo);
     if (scene.lights.size() > 0) {
         // Compute direct lighting for _DirectLightingIntegrator_ integrator
+        // 根据策略计算直接光照：遍历所有光源并采样 或 随机选取一个光源采样
         if (strategy == LightStrategy::UniformSampleAll)
             L += UniformSampleAllLights(isect, scene, arena, sampler,
                                         nLightSamples);
@@ -88,6 +93,7 @@ Spectrum DirectLightingIntegrator::Li(const RayDifferential &ray,
     }
     if (depth + 1 < maxDepth) {
         // Trace rays for specular reflection and refraction
+        // 递归追踪镜面反射和折射光线（间接光照仅处理镜面弹射）
         L += SpecularReflect(ray, isect, scene, sampler, arena, depth);
         L += SpecularTransmit(ray, isect, scene, sampler, arena, depth);
     }

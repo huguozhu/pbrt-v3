@@ -32,6 +32,14 @@
 
 
 // shapes/curve.cpp*
+/**
+ * @file curve.cpp
+ * @brief 曲线(Curve)几何体的实现
+ *
+ * 实现了三次贝塞尔曲线的构造、光线求交、面积计算等功能。
+ * 曲线通过递归细分方法进行光线求交测试，支持Flat/Cylinder/Ribbon三种类型。
+ * 使用de Casteljau算法进行贝塞尔曲线的求值和细分。
+ */
 #include "shapes/curve.h"
 #include "paramset.h"
 #include "stats.h"
@@ -44,7 +52,7 @@ STAT_INT_DISTRIBUTION("Intersections/Curve refinement level", refinementLevel);
 STAT_COUNTER("Scene/Curves", nCurves);
 STAT_COUNTER("Scene/Split curves", nSplitCurves);
 
-// Curve Utility Functions
+// Curve Utility Functions / 曲线工具函数
 static Point3f BlossomBezier(const Point3f p[4], Float u0, Float u1, Float u2) {
     Point3f a[3] = {Lerp(u0, p[0], p[1]), Lerp(u0, p[1], p[2]),
                     Lerp(u0, p[2], p[3])};
@@ -52,6 +60,12 @@ static Point3f BlossomBezier(const Point3f p[4], Float u0, Float u1, Float u2) {
     return Lerp(u2, b[0], b[1]);
 }
 
+/**
+ * @brief 细分贝塞尔曲线为两段
+ * 使用de Casteljau算法将一条贝塞尔曲线在u=0.5处分为两段
+ * @param cp 原始4个控制点
+ * @param cpSplit 输出7个点，构成两条子曲线的控制点(cpSplit[0..3]和cpSplit[3..6])
+ */
 inline void SubdivideBezier(const Point3f cp[4], Point3f cpSplit[7]) {
     cpSplit[0] = cp[0];
     cpSplit[1] = (cp[0] + cp[1]) / 2;
@@ -62,6 +76,14 @@ inline void SubdivideBezier(const Point3f cp[4], Point3f cpSplit[7]) {
     cpSplit[6] = cp[3];
 }
 
+/**
+ * @brief 求贝塞尔曲线上一点(及导数)
+ * 使用de Casteljau算法计算贝塞尔曲线上参数u对应的点和可选的一阶导数
+ * @param cp 4个控制点
+ * @param u 参数值[0,1]
+ * @param deriv 输出导数向量(可为nullptr)
+ * @return 曲线上的点
+ */
 static Point3f EvalBezier(const Point3f cp[4], Float u,
                           Vector3f *deriv = nullptr) {
     Point3f cp1[3] = {Lerp(u, cp[0], cp[1]), Lerp(u, cp[1], cp[2]),
@@ -83,7 +105,11 @@ static Point3f EvalBezier(const Point3f cp[4], Float u,
     return Lerp(u, cp2[0], cp2[1]);
 }
 
-// Curve Method Definitions
+// Curve Method Definitions / 曲线方法实现
+/**
+ * @brief CurveCommon构造函数
+ * 初始化曲线的共享数据，包括控制点、宽度和法线信息
+ */
 CurveCommon::CurveCommon(const Point3f c[4], Float width0, Float width1,
                          CurveType type, const Normal3f *norm)
     : type(type) {
@@ -100,6 +126,12 @@ CurveCommon::CurveCommon(const Point3f c[4], Float width0, Float width1,
     ++nCurves;
 }
 
+/**
+ * @brief 创建曲线的内部函数
+ * 将一条贝塞尔曲线按指定细分深度拆分为多个线段
+ * @param splitDepth 细分深度，决定最终曲线段数量(2^splitDepth)
+ * @return 曲线段列表
+ */
 std::vector<std::shared_ptr<Shape>> CreateCurve(
     const Transform *o2w, const Transform *w2o, bool reverseOrientation,
     const Point3f *c, Float w0, Float w1, CurveType type,
@@ -120,8 +152,12 @@ std::vector<std::shared_ptr<Shape>> CreateCurve(
     return segments;
 }
 
+/**
+ * @brief 计算曲线段在对象空间的包围盒
+ * 使用开花求值计算子段的控制点，考虑曲线宽度扩展包围盒
+ */
 Bounds3f Curve::ObjectBound() const {
-    // Compute object-space control points for curve segment, _cpObj_
+    // Compute object-space control points for curve segment, _cpObj_ / 计算曲线段的控制点
     Point3f cpObj[4];
     cpObj[0] = BlossomBezier(common->cpObj, uMin, uMin, uMin);
     cpObj[1] = BlossomBezier(common->cpObj, uMin, uMin, uMax);
@@ -134,6 +170,12 @@ Bounds3f Curve::ObjectBound() const {
     return Expand(b, std::max(width[0], width[1]) * 0.5f);
 }
 
+/**
+ * @brief 光线-曲线求交(入口函数)
+ *
+ * 将光线变换到对象空间，计算曲线段控制点，并将曲线投影到光线垂直平面，
+ * 然后递归细分进行求交测试。
+ */
 bool Curve::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
                       bool testAlphaTexture) const {
     ProfilePhase p(isect ? Prof::CurveIntersect : Prof::CurveIntersectP);
@@ -229,6 +271,14 @@ bool Curve::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
                               uMax, maxDepth);
 }
 
+/**
+ * @brief 递归光线-曲线求交
+ *
+ * 递归细分贝塞尔曲线段，对每个子段进行包围盒测试，
+ * 在叶子层级(深度为0)执行精确的曲线距离测试。
+ *
+ * @param depth 剩余递归深度，为0时执行最终求交
+ */
 bool Curve::recursiveIntersect(const Ray &ray, Float *tHit,
                                SurfaceInteraction *isect, const Point3f cp[4],
                                const Transform &rayToObject, Float u0, Float u1,
@@ -373,6 +423,10 @@ bool Curve::recursiveIntersect(const Ray &ray, Float *tHit,
     }
 }
 
+/**
+ * @brief 计算曲线段的近似面积
+ * 通过曲线控制点之间距离之和乘以平均宽度来估算
+ */
 Float Curve::Area() const {
     // Compute object-space control points for curve segment, _cpObj_
     Point3f cpObj[4];
@@ -389,11 +443,20 @@ Float Curve::Area() const {
     return approxLength * avgWidth;
 }
 
+/**
+ * @brief 在曲线表面采样一个点(未实现)
+ */
 Interaction Curve::Sample(const Point2f &u, Float *pdf) const {
     LOG(FATAL) << "Curve::Sample not implemented.";
     return Interaction();
 }
 
+/**
+ * @brief 创建曲线形状的工厂函数
+ *
+ * 从参数集中读取曲线参数，支持Bezier和B-spline两种基函数，
+ * 支持Flat/Cylinder/Ribbon三种类型，支持2次和3次曲线。
+ */
 std::vector<std::shared_ptr<Shape>> CreateCurveShape(const Transform *o2w,
                                                      const Transform *w2o,
                                                      bool reverseOrientation,

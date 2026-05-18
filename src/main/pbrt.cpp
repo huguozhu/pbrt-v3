@@ -32,6 +32,7 @@
 
 
 // main/pbrt.cpp*
+// 文件功能：pbrt渲染器的主程序入口，负责命令行参数解析、初始化渲染核心、解析场景描述文件
 #include "pbrt.h"
 #include "api.h"
 #include "parser.h"
@@ -40,6 +41,7 @@
 
 using namespace pbrt;
 
+// usage函数：打印程序使用帮助信息
 static void usage(const char *msg = nullptr) {
     if (msg)
         fprintf(stderr, "pbrt: %s\n\n", msg);
@@ -73,6 +75,7 @@ Reformatting options:
 }
 
 // main program
+// 主函数：初始化日志系统，解析命令行参数，初始化渲染核心，解析场景并渲染
 int main(int argc, char *argv[]) {
     google::InitGoogleLogging(argv[0]);
     FLAGS_stderrthreshold = 1; // Warning and above.
@@ -80,6 +83,7 @@ int main(int argc, char *argv[]) {
     Options options;
     std::vector<std::string> filenames;
     // Process command-line arguments
+    // 处理命令行参数：线程数、输出文件、裁剪窗口、日志选项、快速渲染等
     for (int i = 1; i < argc; ++i) {
         if (!strcmp(argv[i], "--nthreads") || !strcmp(argv[i], "-nthreads")) {
             if (i + 1 == argc)
@@ -139,6 +143,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Print welcome banner
+    // 打印欢迎信息：版本号、构建时间、检测到的核心数等
     if (!options.quiet && !options.cat && !options.toPly) {
         if (sizeof(void *) == 4)
             printf("*** WARNING: This is a 32-bit build of pbrt. It will crash "
@@ -160,11 +165,14 @@ int main(int argc, char *argv[]) {
     }
     pbrtInit(options);
     // Process scene description
+    // 初始化渲染核心并解析场景描述文件
     if (filenames.empty()) {
         // Parse scene from standard input
+        // 从标准输入解析场景
         pbrtParseFile("-");
     } else {
         // Parse scene from input files
+        // 从指定的输入文件解析场景
         for (const std::string &f : filenames)
             pbrtParseFile(f);
     }

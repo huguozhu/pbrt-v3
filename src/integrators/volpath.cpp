@@ -31,6 +31,7 @@
  */
 
 // integrators/volpath.cpp*
+// VolPathIntegrator实现：体路径追踪，在参与介质中处理光线吸收和散射，同时支持表面弹射和体积散射
 #include "integrators/volpath.h"
 #include "bssrdf.h"
 #include "camera.h"
@@ -47,6 +48,7 @@ STAT_COUNTER("Integrator/Volume interactions", volumeInteractions);
 STAT_COUNTER("Integrator/Surface interactions", surfaceInteractions);
 
 // VolPathIntegrator Method Definitions
+// Preprocess：预处理阶段，创建光照分布用于指导光源采样
 void VolPathIntegrator::Preprocess(const Scene &scene, Sampler &sampler) {
     lightDistribution =
         CreateLightSampleDistribution(lightSampleStrategy, scene);
@@ -55,6 +57,7 @@ void VolPathIntegrator::Preprocess(const Scene &scene, Sampler &sampler) {
 Spectrum VolPathIntegrator::Li(const RayDifferential &r, const Scene &scene,
                                Sampler &sampler, MemoryArena &arena,
                                int depth) const {
+    // VolPathIntegrator::Li：体积路径追踪主循环，支持介质交互（吸收/散射）和表面交互
     ProfilePhase p(Prof::SamplerIntegratorLi);
     Spectrum L(0.f), beta(1.f);
     RayDifferential ray(r);
@@ -80,12 +83,14 @@ Spectrum VolPathIntegrator::Li(const RayDifferential &r, const Scene &scene,
         if (beta.IsBlack()) break;
 
         // Handle an interaction with a medium or a surface
+        // 处理介质交互（体积散射）或表面交互
         if (mi.IsValid()) {
             // Terminate path if ray escaped or _maxDepth_ was reached
             if (bounces >= maxDepth) break;
 
             ++volumeInteractions;
             // Handle scattering at point in medium for volumetric path tracer
+            // 在介质内部进行直接光照采样，然后沿新的相位函数方向继续追踪
             const Distribution1D *lightDistrib =
                 lightDistribution->Lookup(mi.p);
             L += beta * UniformSampleOneLight(mi, scene, arena, sampler, true,
@@ -98,6 +103,7 @@ Spectrum VolPathIntegrator::Li(const RayDifferential &r, const Scene &scene,
         } else {
             ++surfaceInteractions;
             // Handle scattering at point on surface for volumetric path tracer
+            // 处理表面交互：累加自发光、BSDF采样直接光照、反射/折射
 
             // Possibly add emitted light at intersection
             if (bounces == 0 || specularBounce) {
@@ -188,6 +194,7 @@ Spectrum VolPathIntegrator::Li(const RayDifferential &r, const Scene &scene,
     return L;
 }
 
+// CreateVolPathIntegrator：根据参数集创建VolPathIntegrator实例
 VolPathIntegrator *CreateVolPathIntegrator(
     const ParamSet &params, std::shared_ptr<Sampler> sampler,
     std::shared_ptr<const Camera> camera) {

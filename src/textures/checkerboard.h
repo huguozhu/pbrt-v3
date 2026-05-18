@@ -39,6 +39,7 @@
 #define PBRT_TEXTURES_CHECKERBOARD_H
 
 // textures/checkerboard.h*
+// 模块功能：棋盘格纹理（CheckerboardTexture），支持2D和3D棋盘格图案，具有抗锯齿选项
 #include "pbrt.h"
 #include "texture.h"
 #include "paramset.h"
@@ -46,6 +47,7 @@
 namespace pbrt {
 
 // AAMethod Declaration
+// 抗锯齿方法枚举：None = 无抗锯齿, ClosedForm = 封闭形式盒式滤波
 enum class AAMethod { None, ClosedForm };
 
 // CheckerboardTexture Declarations

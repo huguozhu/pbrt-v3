@@ -32,11 +32,13 @@
 
 
 // textures/wrinkled.cpp*
+// 文件功能：褶皱纹理（WrinkledTexture）的创建函数实现
 #include "textures/wrinkled.h"
 
 namespace pbrt {
 
 // WrinkledTexture Method Definitions
+// 创建浮点型褶皱纹理：使用湍流噪声模拟表面褶皱
 WrinkledTexture<Float> *CreateWrinkledFloatTexture(const Transform &tex2world,
                                                    const TextureParams &tp) {
     // Initialize 3D texture mapping _map_ from _tp_
@@ -45,6 +47,7 @@ WrinkledTexture<Float> *CreateWrinkledFloatTexture(const Transform &tex2world,
                                       tp.FindFloat("roughness", .5f));
 }
 
+// 创建光谱型褶皱纹理
 WrinkledTexture<Spectrum> *CreateWrinkledSpectrumTexture(
     const Transform &tex2world, const TextureParams &tp) {
     // Initialize 3D texture mapping _map_ from _tp_

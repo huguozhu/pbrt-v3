@@ -32,16 +32,19 @@
 
 
 // filters/sinc.cpp*
+// Lanczos窗口化Sinc滤波器实现：使用可分离的窗口化sinc核函数
 #include "filters/sinc.h"
 #include "paramset.h"
 
 namespace pbrt {
 
 // Sinc Filter Method Definitions
+// Evaluate: 计算LanczosSinc滤波器在点p处的权重，通过对x和y方向独立滤波并相乘
 Float LanczosSincFilter::Evaluate(const Point2f &p) const {
     return WindowedSinc(p.x, radius.x) * WindowedSinc(p.y, radius.y);
 }
 
+// CreateSincFilter: 根据参数集创建LanczosSinc滤波器，从参数中读取xwidth、ywidth和tau
 LanczosSincFilter *CreateSincFilter(const ParamSet &ps) {
     Float xw = ps.FindOneFloat("xwidth", 4.);
     Float yw = ps.FindOneFloat("ywidth", 4.);

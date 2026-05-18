@@ -32,17 +32,20 @@
 
 
 // filters/triangle.cpp*
+// 三角形滤波器实现：权重从中心向边缘线性递减，为可分离的双线性函数
 #include "filters/triangle.h"
 #include "paramset.h"
 
 namespace pbrt {
 
 // Triangle Filter Method Definitions
+// Evaluate: 计算三角形滤波器在点p处的权重，返回max(0, radius - |p|)的乘积
 Float TriangleFilter::Evaluate(const Point2f &p) const {
     return std::max((Float)0, radius.x - std::abs(p.x)) *
            std::max((Float)0, radius.y - std::abs(p.y));
 }
 
+// CreateTriangleFilter: 根据参数集创建三角形滤波器，从参数中读取xwidth和ywidth
 TriangleFilter *CreateTriangleFilter(const ParamSet &ps) {
     // Find common filter parameters
     Float xw = ps.FindOneFloat("xwidth", 2.f);

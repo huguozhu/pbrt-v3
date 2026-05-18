@@ -32,6 +32,13 @@
 
 
 // shapes/plymesh.cpp*
+/**
+ * @file plymesh.cpp
+ * @brief PLY网格(PLYMesh)加载功能的实现
+ *
+ * 使用rply库读取PLY格式文件，提取顶点、法线、UV坐标和面索引，
+ * 创建TriangleMesh对象。支持三角形和四边形面片。
+ */
 #include "shapes/triangle.h"
 #include "textures/constant.h"
 #include "paramset.h"
@@ -42,6 +49,10 @@
 namespace pbrt {
 using namespace std;
 
+/**
+ * @brief PLY加载回调上下文
+ * 存储从PLY文件解析出的几何数据
+ */
 struct CallbackContext {
     Point3f *p;
     Normal3f *n;
@@ -77,7 +88,7 @@ void rply_message_callback(p_ply ply, const char *message) {
     Warning("rply: %s", message);
 }
 
-/* Callback to handle vertex data from RPly */
+/* Callback to handle vertex data from RPly / RPly顶点数据回调 */
 int rply_vertex_callback(p_ply_argument argument) {
     Float **buffers;
     long index, flags;
@@ -97,7 +108,7 @@ int rply_vertex_callback(p_ply_argument argument) {
     return 1;
 }
 
-/* Callback to handle face data from RPly */
+/* Callback to handle face data from RPly / RPly面数据回调 */
 int rply_face_callback(p_ply_argument argument) {
     CallbackContext *context;
     long flags;
@@ -154,6 +165,12 @@ int rply_face_callback(p_ply_argument argument) {
     return 1;
 }
 
+/**
+ * @brief 从PLY文件创建网格
+ *
+ * 打开PLY文件，读取顶点、法线、UV和面数据，
+ * 构建三角形网格(将四边形拆分为两个三角形)。
+ */
 std::vector<std::shared_ptr<Shape>> CreatePLYMesh(
     const Transform *o2w, const Transform *w2o, bool reverseOrientation,
     const ParamSet &params,
@@ -173,7 +190,7 @@ std::vector<std::shared_ptr<Shape>> CreatePLYMesh(
     p_ply_element element = nullptr;
     long vertexCount = 0, faceCount = 0;
 
-    /* Inspect the structure of the PLY file */
+    /* Inspect the structure of the PLY file / 检查PLY文件结构 */
     while ((element = ply_get_next_element(ply, element)) != nullptr) {
         const char *name;
         long nInstances;
@@ -215,7 +232,7 @@ std::vector<std::shared_ptr<Shape>> CreatePLYMesh(
         context.n = new Normal3f[vertexCount];
 
     /* There seem to be lots of different conventions regarding UV coordinate
-     * names */
+     * names / UV坐标名称有多种不同约定 */
     if ((ply_set_read_cb(ply, "vertex", "u", rply_vertex_callback, &context,
                          0x220) &&
          ply_set_read_cb(ply, "vertex", "v", rply_vertex_callback, &context,
@@ -234,7 +251,7 @@ std::vector<std::shared_ptr<Shape>> CreatePLYMesh(
                          &context, 0x221)))
         context.uv = new Point2f[vertexCount];
 
-    /* Allocate enough space in case all faces are quads */
+    /* Allocate enough space in case all faces are quads / 分配足够空间(最多全部为四边形) */
     context.indices = new int[faceCount * 6];
     context.vertexCount = vertexCount;
 
@@ -256,7 +273,7 @@ std::vector<std::shared_ptr<Shape>> CreatePLYMesh(
 
     if (context.error) return std::vector<std::shared_ptr<Shape>>();
 
-    // Look up an alpha texture, if applicable
+    // Look up an alpha texture, if applicable / 查找alpha纹理(透明度)
     std::shared_ptr<Texture<Float>> alphaTex;
     std::string alphaTexName = params.FindTexture("alpha");
     if (alphaTexName != "") {

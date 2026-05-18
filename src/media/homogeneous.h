@@ -39,11 +39,15 @@
 #define PBRT_MEDIA_HOMOGENEOUS_H
 
 // media/homogeneous.h*
+// 文件描述: 均匀参与介质的头文件。实现空间均匀分布的散射和吸收介质，
+// 支持各向异性相位函数(Henyey-Greenstein)。
 #include "medium.h"
 
 namespace pbrt {
 
 // HomogeneousMedium Declarations
+// 均匀介质类，介质的吸收系数(sigma_a)和散射系数(sigma_s)在空间中为常数。
+// 使用解析方法计算透射率和采样散射事件。
 class HomogeneousMedium : public Medium {
   public:
     // HomogeneousMedium Public Methods
@@ -52,14 +56,16 @@ class HomogeneousMedium : public Medium {
           sigma_s(sigma_s),
           sigma_t(sigma_s + sigma_a),
           g(g) {}
+    // 计算光线穿过均匀介质的透射率(解析解)
     Spectrum Tr(const Ray &ray, Sampler &sampler) const;
+    // 采样介质中的散射事件(解析采样)
     Spectrum Sample(const Ray &ray, Sampler &sampler, MemoryArena &arena,
                     MediumInteraction *mi) const;
 
   private:
     // HomogeneousMedium Private Data
-    const Spectrum sigma_a, sigma_s, sigma_t;
-    const Float g;
+    const Spectrum sigma_a, sigma_s, sigma_t;  // 吸收系数、散射系数、总衰减系数
+    const Float g;                              // 相位函数各向异性参数
 };
 
 }  // namespace pbrt

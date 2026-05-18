@@ -32,11 +32,13 @@
 
 
 // textures/bilerp.cpp*
+// 文件功能：双线性插值纹理（BilerpTexture）的创建函数实现
 #include "textures/bilerp.h"
 
 namespace pbrt {
 
 // BilerpTexture Method Definitions
+// 创建浮点型双线性插值纹理：从纹理参数中读取映射方式和四个角点的值
 BilerpTexture<Float> *CreateBilerpFloatTexture(const Transform &tex2world,
                                                const TextureParams &tp) {
     // Initialize 2D texture mapping _map_ from _tp_
@@ -69,6 +71,7 @@ BilerpTexture<Float> *CreateBilerpFloatTexture(const Transform &tex2world,
 BilerpTexture<Spectrum> *CreateBilerpSpectrumTexture(const Transform &tex2world,
                                                      const TextureParams &tp) {
     // Initialize 2D texture mapping _map_ from _tp_
+    // 初始化2D纹理映射：从参数中读取映射类型（uv、spherical、cylindrical、planar）
     std::unique_ptr<TextureMapping2D> map;
     std::string type = tp.FindString("mapping", "uv");
     if (type == "uv") {

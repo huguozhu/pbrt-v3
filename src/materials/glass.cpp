@@ -32,6 +32,7 @@
 
 
 // materials/glass.cpp*
+// 文件描述: 玻璃材质的实现。支持光滑和粗糙介电质表面的反射与透射。
 #include "materials/glass.h"
 #include "spectrum.h"
 #include "reflection.h"
@@ -42,27 +43,30 @@
 namespace pbrt {
 
 // GlassMaterial Method Definitions
+// 计算散射函数: 根据粗糙度创建光滑或粗糙玻璃的BSDF
 void GlassMaterial::ComputeScatteringFunctions(SurfaceInteraction *si,
                                                MemoryArena &arena,
                                                TransportMode mode,
                                                bool allowMultipleLobes) const {
-    // Perform bump mapping with _bumpMap_, if present
+    // 如果存在凹凸贴图则执行凹凸映射
     if (bumpMap) Bump(bumpMap, si);
     Float eta = index->Evaluate(*si);
     Float urough = uRoughness->Evaluate(*si);
     Float vrough = vRoughness->Evaluate(*si);
     Spectrum R = Kr->Evaluate(*si).Clamp();
     Spectrum T = Kt->Evaluate(*si).Clamp();
-    // Initialize _bsdf_ for smooth or rough dielectric
+    // 初始化光滑或粗糙介电质的BSDF
     si->bsdf = ARENA_ALLOC(arena, BSDF)(*si, eta);
 
     if (R.IsBlack() && T.IsBlack()) return;
 
+    // 判断是否为光滑表面: 粗糙度均为0时为镜面
     bool isSpecular = urough == 0 && vrough == 0;
     if (isSpecular && allowMultipleLobes) {
         si->bsdf->Add(
             ARENA_ALLOC(arena, FresnelSpecular)(R, T, 1.f, eta, mode));
     } else {
+        // 粗糙情形: 使用微表面模型
         if (remapRoughness) {
             urough = TrowbridgeReitzDistribution::RoughnessToAlpha(urough);
             vrough = TrowbridgeReitzDistribution::RoughnessToAlpha(vrough);
@@ -91,6 +95,7 @@ void GlassMaterial::ComputeScatteringFunctions(SurfaceInteraction *si,
     }
 }
 
+// 创建玻璃材质对象的工厂函数
 GlassMaterial *CreateGlassMaterial(const TextureParams &mp) {
     std::shared_ptr<Texture<Spectrum>> Kr =
         mp.GetSpectrumTexture("Kr", Spectrum(1.f));

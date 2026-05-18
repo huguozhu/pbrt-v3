@@ -32,6 +32,13 @@
 
 
 // shapes/paraboloid.cpp*
+/**
+ * @file paraboloid.cpp
+ * @brief 抛物面(Paraboloid)几何体的实现
+ *
+ * 实现了抛物面的光线求交、面积计算等功能。
+ * 抛物面是旋转二次曲面，方程为 z = k*(x^2 + y^2)。
+ */
 #include "shapes/paraboloid.h"
 #include "paramset.h"
 #include "efloat.h"
@@ -39,7 +46,10 @@
 
 namespace pbrt {
 
-// Paraboloid Method Definitions
+// Paraboloid Method Definitions / 抛物面方法实现
+/**
+ * @brief 抛物面构造函数
+ */
 Paraboloid::Paraboloid(const Transform *o2w, const Transform *w2o, bool ro,
                        Float radius, Float z0, Float z1, Float phiMax)
     : Shape(o2w, w2o, ro),
@@ -47,12 +57,18 @@ Paraboloid::Paraboloid(const Transform *o2w, const Transform *w2o, bool ro,
       zMin(std::min(z0, z1)),
       zMax(std::max(z0, z1)),
       phiMax(Radians(Clamp(phiMax, 0, 360))) {}
+/**
+ * @brief 计算抛物面在对象空间的包围盒
+ */
 Bounds3f Paraboloid::ObjectBound() const {
     Point3f p1 = Point3f(-radius, -radius, zMin);
     Point3f p2 = Point3f(radius, radius, zMax);
     return Bounds3f(p1, p2);
 }
 
+/**
+ * @brief 光线-抛物面求交(完整求交)
+ */
 bool Paraboloid::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
                            bool testAlphaTexture) const {
     ProfilePhase p(Prof::ShapeIntersect);
@@ -62,9 +78,9 @@ bool Paraboloid::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
     Vector3f oErr, dErr;
     Ray ray = (*WorldToObject)(r, &oErr, &dErr);
 
-    // Compute quadratic paraboloid coefficients
+    // Compute quadratic paraboloid coefficients / 计算抛物面二次型系数
 
-    // Initialize _EFloat_ ray coordinate values
+    // Initialize _EFloat_ ray coordinate values / 用EFloat初始化光线坐标值
     EFloat ox(ray.o.x, oErr.x), oy(ray.o.y, oErr.y), oz(ray.o.z, oErr.z);
     EFloat dx(ray.d.x, dErr.x), dy(ray.d.y, dErr.y), dz(ray.d.z, dErr.z);
     EFloat k = EFloat(zMax) / (EFloat(radius) * EFloat(radius));
@@ -84,17 +100,17 @@ bool Paraboloid::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
         if (tShapeHit.UpperBound() > ray.tMax) return false;
     }
 
-    // Compute paraboloid inverse mapping
+    // Compute paraboloid inverse mapping / 计算抛物面逆映射
     pHit = ray((Float)tShapeHit);
     phi = std::atan2(pHit.y, pHit.x);
     if (phi < 0) phi += 2 * Pi;
 
-    // Test paraboloid intersection against clipping parameters
+    // Test paraboloid intersection against clipping parameters / 测试抛物面交点是否在裁剪参数范围内
     if (pHit.z < zMin || pHit.z > zMax || phi > phiMax) {
         if (tShapeHit == t1) return false;
         tShapeHit = t1;
         if (t1.UpperBound() > ray.tMax) return false;
-        // Compute paraboloid inverse mapping
+        // Compute paraboloid inverse mapping / 计算抛物面逆映射
         pHit = ray((Float)tShapeHit);
         phi = std::atan2(pHit.y, pHit.x);
         if (phi < 0) phi += 2 * Pi;
@@ -152,6 +168,9 @@ bool Paraboloid::Intersect(const Ray &r, Float *tHit, SurfaceInteraction *isect,
     return true;
 }
 
+/**
+ * @brief 光线-抛物面求交测试(仅判断是否相交)
+ */
 bool Paraboloid::IntersectP(const Ray &r, bool testAlphaTexture) const {
     ProfilePhase p(Prof::ShapeIntersectP);
     Float phi;
@@ -160,9 +179,9 @@ bool Paraboloid::IntersectP(const Ray &r, bool testAlphaTexture) const {
     Vector3f oErr, dErr;
     Ray ray = (*WorldToObject)(r, &oErr, &dErr);
 
-    // Compute quadratic paraboloid coefficients
+    // Compute quadratic paraboloid coefficients / 计算抛物面二次型系数
 
-    // Initialize _EFloat_ ray coordinate values
+    // Initialize _EFloat_ ray coordinate values / 用EFloat初始化光线坐标值
     EFloat ox(ray.o.x, oErr.x), oy(ray.o.y, oErr.y), oz(ray.o.z, oErr.z);
     EFloat dx(ray.d.x, dErr.x), dy(ray.d.y, dErr.y), dz(ray.d.z, dErr.z);
     EFloat k = EFloat(zMax) / (EFloat(radius) * EFloat(radius));
@@ -182,17 +201,17 @@ bool Paraboloid::IntersectP(const Ray &r, bool testAlphaTexture) const {
         if (tShapeHit.UpperBound() > ray.tMax) return false;
     }
 
-    // Compute paraboloid inverse mapping
+    // Compute paraboloid inverse mapping / 计算抛物面逆映射
     pHit = ray((Float)tShapeHit);
     phi = std::atan2(pHit.y, pHit.x);
     if (phi < 0) phi += 2 * Pi;
 
-    // Test paraboloid intersection against clipping parameters
+    // Test paraboloid intersection against clipping parameters / 测试抛物面交点是否在裁剪参数范围内
     if (pHit.z < zMin || pHit.z > zMax || phi > phiMax) {
         if (tShapeHit == t1) return false;
         tShapeHit = t1;
         if (t1.UpperBound() > ray.tMax) return false;
-        // Compute paraboloid inverse mapping
+        // Compute paraboloid inverse mapping / 计算抛物面逆映射
         pHit = ray((Float)tShapeHit);
         phi = std::atan2(pHit.y, pHit.x);
         if (phi < 0) phi += 2 * Pi;
@@ -201,6 +220,9 @@ bool Paraboloid::IntersectP(const Ray &r, bool testAlphaTexture) const {
     return true;
 }
 
+/**
+ * @brief 计算抛物面表面积
+ */
 Float Paraboloid::Area() const {
     Float radius2 = radius * radius;
     Float k = 4 * zMax / radius2;
@@ -208,11 +230,17 @@ Float Paraboloid::Area() const {
            (std::pow(k * zMax + 1, 1.5f) - std::pow(k * zMin + 1, 1.5f));
 }
 
+/**
+ * @brief 在抛物面表面采样一个点(未实现)
+ */
 Interaction Paraboloid::Sample(const Point2f &u, Float *pdf) const {
     LOG(FATAL) << "Paraboloid::Sample not implemented.";
     return Interaction();
 }
 
+/**
+ * @brief 创建抛物面形状的工厂函数
+ */
 std::shared_ptr<Paraboloid> CreateParaboloidShape(const Transform *o2w,
                                                   const Transform *w2o,
                                                   bool reverseOrientation,

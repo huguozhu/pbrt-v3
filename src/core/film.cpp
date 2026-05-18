@@ -32,6 +32,12 @@
 
 
 // core/film.cpp*
+//
+// 此文件实现了胶片（Film）类，负责存储和输出渲染生成的图像。
+// Film 管理像素缓冲区，处理样本累加、滤波合并、图像写入等功能。
+// 同时支持分块渲染（FilmTile）和溅射（Splat）操作。
+//
+
 #include "film.h"
 #include "paramset.h"
 #include "imageio.h"
@@ -42,6 +48,10 @@ namespace pbrt {
 STAT_MEMORY_COUNTER("Memory/Film pixels", filmPixelMemory);
 
 // Film Method Definitions
+
+// Film 构造函数。
+// 根据全分辨率和裁剪窗口计算实际像素区域，分配像素存储空间，
+// 并预计算滤波器权重查询表以加速后续滤波操作。
 Film::Film(const Point2i &resolution, const Bounds2f &cropWindow,
            std::unique_ptr<Filter> filt, Float diagonal,
            const std::string &filename, Float scale, Float maxSampleLuminance)
@@ -77,6 +87,8 @@ Film::Film(const Point2i &resolution, const Bounds2f &cropWindow,
     }
 }
 
+// 计算需要采样的像素边界范围。考虑滤波器的半径，
+// 返回比裁剪区域略大的边界以确保滤波器覆盖完整。
 Bounds2i Film::GetSampleBounds() const {
     Bounds2f floatBounds(Floor(Point2f(croppedPixelBounds.pMin) +
                                Vector2f(0.5f, 0.5f) - filter->radius),
@@ -85,6 +97,8 @@ Bounds2i Film::GetSampleBounds() const {
     return (Bounds2i)floatBounds;
 }
 
+// 计算胶片在物理空间中的范围。根据对角线长度和宽高比
+// 计算物理尺寸，返回以胶片中心为原点的包围盒。
 Bounds2f Film::GetPhysicalExtent() const {
     Float aspect = (Float)fullResolution.y / (Float)fullResolution.x;
     Float x = std::sqrt(diagonal * diagonal / (1 + aspect * aspect));
@@ -92,6 +106,8 @@ Bounds2f Film::GetPhysicalExtent() const {
     return Bounds2f(Point2f(-x / 2, -y / 2), Point2f(x / 2, y / 2));
 }
 
+// 根据采样边界获取对应的 FilmTile（胶片瓦片）。
+// 计算采样区域中像素受滤波器影响的范围，返回一个新的 FilmTile 用于并行渲染。
 std::unique_ptr<FilmTile> Film::GetFilmTile(const Bounds2i &sampleBounds) {
     // Bound image pixels that samples in _sampleBounds_ contribute to
     Vector2f halfPixel = Vector2f(0.5f, 0.5f);
@@ -105,6 +121,7 @@ std::unique_ptr<FilmTile> Film::GetFilmTile(const Bounds2i &sampleBounds) {
         maxSampleLuminance));
 }
 
+// 清除胶片所有像素的累加数据。将颜色值、溅射值和滤波器权重和归零。
 void Film::Clear() {
     for (Point2i p : croppedPixelBounds) {
         Pixel &pixel = GetPixel(p);
@@ -114,6 +131,8 @@ void Film::Clear() {
     }
 }
 
+// 将 FilmTile 中的像素数据合并到主 Film 缓冲区。
+// 使用互斥锁保证多线程安全，累加颜色值和滤波器权重。
 void Film::MergeFilmTile(std::unique_ptr<FilmTile> tile) {
     ProfilePhase p(Prof::MergeFilmTile);
     VLOG(1) << "Merging film tile " << tile->pixelBounds;
@@ -129,6 +148,8 @@ void Film::MergeFilmTile(std::unique_ptr<FilmTile> tile) {
     }
 }
 
+// 用外部图像数据直接设置胶片像素值。将 Spectrum 数组转换为 XYZ 存储，
+// 并将滤波器权重设为 1，溅射值清零。
 void Film::SetImage(const Spectrum *img) const {
     int nPixels = croppedPixelBounds.Area();
     for (int i = 0; i < nPixels; ++i) {
@@ -139,6 +160,9 @@ void Film::SetImage(const Spectrum *img) const {
     }
 }
 
+// 添加溅射样本到胶片。用于双向路径追踪等算法中的顶点合并。
+// 检查 NaN、负亮度和无穷大值并忽略无效样本，
+// 将有效样本的 XYZ 值通过原子操作累加到对应像素。
 void Film::AddSplat(const Point2f &p, Spectrum v) {
     ProfilePhase pp(Prof::SplatFilm);
 
@@ -166,6 +190,9 @@ void Film::AddSplat(const Point2f &p, Spectrum v) {
     for (int i = 0; i < 3; ++i) pixel.splatXYZ[i].Add(xyz[i]);
 }
 
+// 将胶片像素写入图像文件。
+// 将 XYZ 颜色转换为 RGB，通过滤波器权重归一化像素值，
+// 添加溅射贡献并应用缩放因子，最后调用 WriteImage 输出文件。
 void Film::WriteImage(Float splatScale) {
     // Convert image to RGB and compute final pixel values
     LOG(INFO) <<
@@ -210,6 +237,8 @@ void Film::WriteImage(Float splatScale) {
     pbrt::WriteImage(filename, &rgb[0], croppedPixelBounds, fullResolution);
 }
 
+// 创建 Film 实例的工厂函数。从参数集中读取分辨率、裁剪窗口、
+// 缩放因子、对角线长度和最大样本亮度等参数，构造并返回 Film 对象。
 Film *CreateFilm(const ParamSet &params, std::unique_ptr<Filter> filter) {
     std::string filename;
     if (PbrtOptions.imageFile != "") {

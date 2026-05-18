@@ -32,6 +32,12 @@
 
 
 // core/paramset.cpp*
+//
+// 此文件实现了参数集（ParamSet）和纹理参数（TextureParams）模块，用于管理
+// pbrt 场景描述中的各种参数。ParamSet 以类型安全的方式存储和查找整数、浮点数、
+// 布尔值、点、向量、法线、颜色光谱和字符串等参数。TextureParams 在此基础上
+// 处理纹理参数的解析和查找。
+//
 #include "paramset.h"
 #include "floatfile.h"
 #include "textures/constant.h"
@@ -39,6 +45,9 @@
 namespace pbrt {
 
 // ParamSet Macros
+// ADD_PARAM_TYPE: 向指定向量中添加新的参数项
+// LOOKUP_PTR: 按名称查找参数并返回指针
+// LOOKUP_ONE: 按名称查找单值参数并返回值
 #define ADD_PARAM_TYPE(T, vec) \
     (vec).emplace_back(new ParamSetItem<T>(name, std::move(values), nValues));
 #define LOOKUP_PTR(vec)             \
@@ -58,6 +67,9 @@ namespace pbrt {
     return d
 
 // ParamSet Methods
+// 以下是各类参数的添加方法，每个方法先擦除同名旧参数，然后添加新参数
+
+// 添加浮点数参数：先擦除旧值，再添加到 floats 列表中
 void ParamSet::AddFloat(const std::string &name,
                         std::unique_ptr<Float[]> values, int nValues) {
     EraseFloat(name);
@@ -65,6 +77,7 @@ void ParamSet::AddFloat(const std::string &name,
         new ParamSetItem<Float>(name, std::move(values), nValues));
 }
 
+// 添加整数参数
 void ParamSet::AddInt(const std::string &name, std::unique_ptr<int[]> values,
                       int nValues) {
     EraseInt(name);
@@ -107,6 +120,7 @@ void ParamSet::AddNormal3f(const std::string &name,
     ADD_PARAM_TYPE(Normal3f, normals);
 }
 
+// 添加 RGB 光谱参数：将 RGB 三元组转换为 Spectrum 对象
 void ParamSet::AddRGBSpectrum(const std::string &name,
                               std::unique_ptr<Float[]> values, int nValues) {
     EraseSpectrum(name);
@@ -119,6 +133,7 @@ void ParamSet::AddRGBSpectrum(const std::string &name,
     spectra.push_back(psi);
 }
 
+// 添加 XYZ 光谱参数：将 XYZ 三元组转换为 Spectrum 对象
 void ParamSet::AddXYZSpectrum(const std::string &name,
                               std::unique_ptr<Float[]> values, int nValues) {
     EraseSpectrum(name);

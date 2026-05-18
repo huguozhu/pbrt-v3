@@ -32,6 +32,13 @@
 
 
 // shapes/nurbs.cpp*
+/**
+ * @file nurbs.cpp
+ * @brief NURBS曲面(Non-Uniform Rational B-Spline)的实现
+ *
+ * 使用de Boor算法进行NURBS曲面求值，将NURBS曲面离散化为三角形网格。
+ * 支持有理和非有理的NURBS曲面，通过控制点网格、节点向量和阶数定义。
+ */
 #include "shapes/nurbs.h"
 #include "shapes/triangle.h"
 #include "paramset.h"
@@ -39,7 +46,7 @@
 
 namespace pbrt {
 
-// NURBS Evaluation Functions
+// NURBS Evaluation Functions / NURBS求值函数
 static int KnotOffset(const Float *knot, int order, int np, Float t) {
     int firstKnot = order - 1;
 
@@ -50,8 +57,12 @@ static int KnotOffset(const Float *knot, int order, int np, Float t) {
     return knotOffset;
 }
 
-// doesn't handle flat out discontinuities in the curve...
+// doesn't handle flat out discontinuities in the curve... / 注意：未处理曲线中的平坦不连续性 / 注意：未处理曲线中的平坦不连续性
 
+/**
+ * @brief 齐次3D坐标
+ * 用于NURBS的有理表示，存储(x,y,z,w)齐次坐标
+ */
 struct Homogeneous3 {
     Homogeneous3() { x = y = z = w = 0.; }
     Homogeneous3(Float xx, Float yy, Float zz, Float ww) {
@@ -64,6 +75,18 @@ struct Homogeneous3 {
     Float x, y, z, w;
 };
 
+/**
+ * @brief NURBS曲线求值(一维)
+ * 使用de Boor算法计算NURBS曲线上的点和一阶导数
+ * @param order 曲线阶数
+ * @param knot 节点向量
+ * @param cp 控制点数组
+ * @param np 控制点数量
+ * @param cpStride 控制点步长
+ * @param t 参数值
+ * @param deriv 输出导数(可为nullptr)
+ * @return 齐次坐标形式的求值结果
+ */
 static Homogeneous3 NURBSEvaluate(int order, const Float *knot,
                                   const Homogeneous3 *cp, int np, int cpStride,
                                   Float t, Vector3f *deriv = nullptr) {
@@ -113,6 +136,11 @@ static Homogeneous3 NURBSEvaluate(int order, const Float *knot,
     return val;
 }
 
+/**
+ * @brief NURBS曲面求值(二维)
+ * 对NURBS曲面在(u,v)处求值，计算位置和偏导数
+ * @return 曲面上的3D点
+ */
 static Point3f NURBSEvaluateSurface(int uOrder, const Float *uKnot, int ucp,
                                     Float u, int vOrder, const Float *vKnot,
                                     int vcp, Float v, const Homogeneous3 *cp,
@@ -142,6 +170,12 @@ static Point3f NURBSEvaluateSurface(int uOrder, const Float *uKnot, int ucp,
     return Point3f(P.x / P.w, P.y / P.w, P.z / P.w);
 }
 
+/**
+ * @brief 创建NURBS曲面形状的工厂函数
+ *
+ * 从参数集中读取NURBS曲面参数(u/v阶数、节点向量、控制点等)，
+ * 将曲面离散化为指定分辨率的三角形网格。
+ */
 std::vector<std::shared_ptr<Shape>> CreateNURBS(const Transform *o2w,
                                                 const Transform *w2o,
                                                 bool reverseOrientation,
@@ -231,7 +265,7 @@ std::vector<std::shared_ptr<Shape>> CreateNURBS(const Transform *o2w,
         return std::vector<std::shared_ptr<Shape>>();
     }
 
-    // Compute NURBS dicing rates
+    // Compute NURBS dicing rates / 计算NURBS离散化分辨率
     int diceu = 30, dicev = 30;
     std::unique_ptr<Float[]> ueval(new Float[diceu]);
     std::unique_ptr<Float[]> veval(new Float[dicev]);
@@ -243,12 +277,12 @@ std::vector<std::shared_ptr<Shape>> CreateNURBS(const Transform *o2w,
     for (i = 0; i < dicev; ++i)
         veval[i] = Lerp((float)i / (float)(dicev - 1), v0, v1);
 
-    // Evaluate NURBS over grid of points
+    // Evaluate NURBS over grid of points / 在网格点上求值NURBS曲面
     memset(evalPs.get(), 0, diceu * dicev * sizeof(Point3f));
     memset(evalNs.get(), 0, diceu * dicev * sizeof(Point3f));
     std::unique_ptr<Point2f[]> uvs(new Point2f[diceu * dicev]);
 
-    // Turn NURBS into triangles
+    // Turn NURBS into triangles / 将NURBS转化为三角形网格
     std::unique_ptr<Homogeneous3[]> Pw(new Homogeneous3[nu * nv]);
     if (isHomogeneous) {
         for (int i = 0; i < nu * nv; ++i) {
@@ -282,7 +316,7 @@ std::vector<std::shared_ptr<Shape>> CreateNURBS(const Transform *o2w,
         }
     }
 
-    // Generate points-polygons mesh
+    // Generate points-polygons mesh / 生成点-多边形网格
     int nTris = 2 * (diceu - 1) * (dicev - 1);
     std::unique_ptr<int[]> vertices(new int[3 * nTris]);
     int *vertp = vertices.get();

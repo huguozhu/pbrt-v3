@@ -39,12 +39,16 @@
 #define PBRT_MATERIALS_SUBSTRATE_H
 
 // materials/substrate.h*
+// 文件描述: 基底层材质(FresnelBlend)的头文件。实现了漫反射基底加微表面高光的模型，
+// 使用FresnelBlend BSDF混合漫反射和高光反射。
 #include "pbrt.h"
 #include "material.h"
 
 namespace pbrt {
 
 // SubstrateMaterial Declarations
+// 基底层材质类，使用FresnelBlend BSDF融合漫反射(Kd)和高光(Ks)分量，
+// 并使用各向异性粗糙度(nu, nv)控制微表面分布。
 class SubstrateMaterial : public Material {
   public:
     // SubstrateMaterial Public Methods
@@ -60,18 +64,20 @@ class SubstrateMaterial : public Material {
           nv(nv),
           bumpMap(bumpMap),
           remapRoughness(remapRoughness) {}
+    // 计算散射函数: 创建基底层材质的FresnelBlend BSDF
     void ComputeScatteringFunctions(SurfaceInteraction *si, MemoryArena &arena,
                                     TransportMode mode,
                                     bool allowMultipleLobes) const;
 
   private:
     // SubstrateMaterial Private Data
-    std::shared_ptr<Texture<Spectrum>> Kd, Ks;
-    std::shared_ptr<Texture<Float>> nu, nv;
-    std::shared_ptr<Texture<Float>> bumpMap;
-    bool remapRoughness;
+    std::shared_ptr<Texture<Spectrum>> Kd, Ks;  // 漫反射和高光颜色
+    std::shared_ptr<Texture<Float>> nu, nv;      // U和V方向的粗糙度
+    std::shared_ptr<Texture<Float>> bumpMap;     // 凹凸贴图
+    bool remapRoughness;                         // 是否重映射粗糙度
 };
 
+// 创建基底层材质对象的工厂函数
 SubstrateMaterial *CreateSubstrateMaterial(const TextureParams &mp);
 
 }  // namespace pbrt

@@ -32,6 +32,7 @@
 
 
 // lights/point.cpp*
+// PointLight实现：点光源，从单一位置向所有方向均匀发射光线，强度随距离平方衰减
 #include "lights/point.h"
 #include "scene.h"
 #include "paramset.h"
@@ -41,6 +42,7 @@
 namespace pbrt {
 
 // PointLight Method Definitions
+// Sample_Li：返回点光源在参考点方向上的辐射度，随距离平方衰减
 Spectrum PointLight::Sample_Li(const Interaction &ref, const Point2f &u,
                                Vector3f *wi, Float *pdf,
                                VisibilityTester *vis) const {
@@ -52,12 +54,15 @@ Spectrum PointLight::Sample_Li(const Interaction &ref, const Point2f &u,
     return I / DistanceSquared(pLight, ref.p);
 }
 
+// Power：计算点光源总功率（4Pi乘以光强度）
 Spectrum PointLight::Power() const { return 4 * Pi * I; }
 
+// Pdf_Li：点光源PDF为0（DeltaPosition分布，方向完全确定）
 Float PointLight::Pdf_Li(const Interaction &, const Vector3f &) const {
     return 0;
 }
 
+// Sample_Le：从点光源发射光线，均匀采样球面方向
 Spectrum PointLight::Sample_Le(const Point2f &u1, const Point2f &u2, Float time,
                                Ray *ray, Normal3f *nLight, Float *pdfPos,
                                Float *pdfDir) const {

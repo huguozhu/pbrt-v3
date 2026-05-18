@@ -31,6 +31,7 @@
  */
 
 // integrators/ao.cpp*
+// AOIntegrator实现：通过向半球方向发射大量光线并检测遮挡来计算每个着色点的环境光照值
 #include "integrators/ao.h"
 #include "sampling.h"
 #include "interaction.h"
@@ -42,6 +43,7 @@
 namespace pbrt {
 
 // AOIntegrator Method Definitions
+// AOIntegrator构造函数：初始化采样方式和采样数量
 AOIntegrator::AOIntegrator(bool cosSample, int ns,
                            std::shared_ptr<const Camera> camera,
                            std::shared_ptr<Sampler> sampler,
@@ -57,11 +59,13 @@ AOIntegrator::AOIntegrator(bool cosSample, int ns,
 Spectrum AOIntegrator::Li(const RayDifferential &r, const Scene &scene,
                           Sampler &sampler, MemoryArena &arena,
                           int depth) const {
+    // AOIntegrator::Li：计算单个像素的环境光照值，通过采样半球方向并检测可见性来实现
     ProfilePhase p(Prof::SamplerIntegratorLi);
     Spectrum L(0.f);
     RayDifferential ray(r);
 
     // Intersect _ray_ with scene and store intersection in _isect_
+    // 与场景求交，获取表面交点
     SurfaceInteraction isect;
  retry:
     if (scene.Intersect(ray, &isect)) {
@@ -74,6 +78,7 @@ Spectrum AOIntegrator::Li(const RayDifferential &r, const Scene &scene,
 
         // Compute coordinate frame based on true geometry, not shading
         // geometry.
+        // 基于几何法线构建局部坐标系（而非着色法线），用于生成半球采样方向
         Normal3f n = Faceforward(isect.n, -ray.d);
         Vector3f s = Normalize(isect.dpdu);
         Vector3f t = Cross(isect.n, s);
@@ -95,6 +100,7 @@ Spectrum AOIntegrator::Li(const RayDifferential &r, const Scene &scene,
                           s.y * wi.x + t.y * wi.y + n.y * wi.z,
                           s.z * wi.x + t.z * wi.y + n.z * wi.z);
 
+            // 检查该方向是否被遮挡，未被遮挡则累积贡献值
             if (!scene.IntersectP(isect.SpawnRay(wi)))
                 L += Dot(wi, n) / (pdf * nSamples);
         }
@@ -102,6 +108,7 @@ Spectrum AOIntegrator::Li(const RayDifferential &r, const Scene &scene,
     return L;
 }
 
+// CreateAOIntegrator：根据参数集创建AOIntegrator实例
 AOIntegrator *CreateAOIntegrator(const ParamSet &params,
                                  std::shared_ptr<Sampler> sampler,
                                  std::shared_ptr<const Camera> camera) {

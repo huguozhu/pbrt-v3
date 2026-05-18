@@ -39,6 +39,8 @@
 #define PBRT_CORE_PARALLEL_H
 
 // core/parallel.h*
+// 并行计算: 提供多线程并行计算基础设施，包括AtomicFloat原子操作、线程屏障Barrier、
+// ParallelFor并行循环和线程索引管理
 #include "pbrt.h"
 #include "geometry.h"
 #include <mutex>
@@ -49,6 +51,7 @@
 namespace pbrt {
 
 // Parallel Declarations
+// AtomicFloat: 支持原子加减操作的浮点数，用于多线程累加统计信息而不需要锁
 class AtomicFloat {
   public:
     // AtomicFloat Public Methods
@@ -78,6 +81,8 @@ class AtomicFloat {
 #endif
 };
 
+// Barrier: 一次性线程屏障，确保所有线程都到达同一点后才允许任何线程继续执行。
+// 注意: 应使用shared_ptr在堆上分配，所有线程共享此指针以确保内存安全释放。
 // Simple one-use barrier; ensures that multiple threads all reach a
 // particular point of execution before allowing any of them to proceed
 // past it.
@@ -98,16 +103,19 @@ class Barrier {
     int count;
 };
 
+// ParallelFor: 一维并行循环，将count次迭代按chunkSize分块并行执行
 void ParallelFor(std::function<void(int64_t)> func, int64_t count,
                  int chunkSize = 1);
-extern PBRT_THREAD_LOCAL int ThreadIndex;
+extern PBRT_THREAD_LOCAL int ThreadIndex;  // 当前线程索引（线程局部存储）
+// ParallelFor2D: 二维并行循环，将二维空间划分为块并行处理
 void ParallelFor2D(std::function<void(Point2i)> func, const Point2i &count);
-int MaxThreadIndex();
-int NumSystemCores();
+int MaxThreadIndex();  // 获取最大线程索引
+int NumSystemCores();  // 获取系统CPU核心数
 
+// 并行系统初始化和清理
 void ParallelInit();
 void ParallelCleanup();
-void MergeWorkerThreadStats();
+void MergeWorkerThreadStats();  // 合并工作线程的统计信息
 
 }  // namespace pbrt
 

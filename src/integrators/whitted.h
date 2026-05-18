@@ -39,6 +39,7 @@
 #define PBRT_INTEGRATORS_WHITTED_H
 
 // integrators/whitted.h*
+// WhittedIntegrator：Whitted风格光线追踪积分器，递归追踪镜面反射和折射，直接采样光源
 #include "pbrt.h"
 #include "integrator.h"
 #include "scene.h"

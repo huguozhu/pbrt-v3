@@ -39,6 +39,7 @@
 #define PBRT_TEXTURES_FBM_H
 
 // textures/fbm.h*
+// 模块功能：分形布朗运动纹理（FBmTexture），使用分形布朗运动生成自然纹理
 #include "pbrt.h"
 #include "texture.h"
 #include "paramset.h"
@@ -46,6 +47,7 @@
 namespace pbrt {
 
 // FBmTexture Declarations
+// 分形布朗运动纹理类声明：通过多层噪声叠加（octaves）生成分形噪声图案
 template <typename T>
 class FBmTexture : public Texture<T> {
   public:

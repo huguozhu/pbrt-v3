@@ -39,6 +39,8 @@
 #define PBRT_CORE_QUATERNION_H
 
 // core/quaternion.h*
+// 四元数: 提供四元数表示和运算，用于平滑的旋转插值（球面线性插值Slerp），
+// 在动画相机和变换中实现平滑旋转
 #include "pbrt.h"
 #include "stringprint.h"
 #include "geometry.h"
@@ -46,9 +48,11 @@
 namespace pbrt {
 
 // Quaternion Declarations
+// Quaternion: 四元数结构体，用于表示旋转和进行平滑旋转插值
 struct Quaternion {
     // Quaternion Public Methods
-    Quaternion() : v(0, 0, 0), w(1) {}
+    Quaternion() : v(0, 0, 0), w(1) {}  // 默认构造：单位四元数（无旋转）
+    // 四元数加法
     Quaternion &operator+=(const Quaternion &q) {
         v += q.v;
         w += q.w;
@@ -95,7 +99,9 @@ struct Quaternion {
         ret.w /= f;
         return ret;
     }
+    // ToTransform: 将四元数转换为对应的旋转变换矩阵
     Transform ToTransform() const;
+    // 从变换矩阵构造四元数
     Quaternion(const Transform &t);
 
     friend std::ostream &operator<<(std::ostream &os, const Quaternion &q) {
@@ -105,19 +111,23 @@ struct Quaternion {
     }
 
     // Quaternion Public Data
-    Vector3f v;
-    Float w;
+    Vector3f v;  // 虚部向量 (x, y, z)
+    Float w;     // 实部 (标量部分)
 };
 
+// Slerp: 球面线性插值，在两个四元数之间进行平滑旋转插值
 Quaternion Slerp(Float t, const Quaternion &q1, const Quaternion &q2);
 
 // Quaternion Inline Functions
+// 标量乘以四元数
 inline Quaternion operator*(Float f, const Quaternion &q) { return q * f; }
 
+// Dot: 计算两个四元数的点积
 inline Float Dot(const Quaternion &q1, const Quaternion &q2) {
     return Dot(q1.v, q2.v) + q1.w * q2.w;
 }
 
+// Normalize: 四元数归一化
 inline Quaternion Normalize(const Quaternion &q) {
     return q / std::sqrt(Dot(q, q));
 }

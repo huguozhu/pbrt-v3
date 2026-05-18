@@ -31,6 +31,10 @@
  */
 
 // core/stats.cpp*
+// 本文件实现pbrt的统计和性能分析系统。
+// 提供了多种统计计数器（整数计数、内存计数、分布统计、百分比和比率），
+// 以及基于定时器中断的性能剖析（profiling）功能，
+// 用于在渲染结束时报出统计信息和性能分析结果。
 #include "stats.h"
 #include <signal.h>
 #include <algorithm>
@@ -76,20 +80,29 @@ static void ReportProfileSample(int, siginfo_t *, void *);
 #endif  // PBRT_HAVE_ITIMER
 
 // Statistics Definitions
+// ReportThreadStats：汇总当前线程的统计数据到全局累加器中。
+// 使用互斥锁保证线程安全，在渲染线程结束时调用。
 void ReportThreadStats() {
     static std::mutex mutex;
     std::lock_guard<std::mutex> lock(mutex);
     StatRegisterer::CallCallbacks(statsAccumulator);
 }
 
+// StatRegisterer::CallCallbacks：遍历所有注册的统计回调函数，
+// 将各个线程的统计数据收集到累加器中
 void StatRegisterer::CallCallbacks(StatsAccumulator &accum) {
     for (auto func : *funcs) func(accum);
 }
 
+// PrintStats：将统计结果输出到指定的文件流
 void PrintStats(FILE *dest) { statsAccumulator.Print(dest); }
 
+// ClearStats：清除所有已收集的统计数据
 void ClearStats() { statsAccumulator.Clear(); }
 
+// getCategoryAndTitle：从统计项名称字符串中解析出类别和标题。
+// 统计项名称格式为"Category/Title"，斜杠前为类别名，斜杠后为标题。
+// 如果没有斜杠，则整个字符串作为标题，类别为空。
 static void getCategoryAndTitle(const std::string &str, std::string *category,
                                 std::string *title) {
     const char *s = str.c_str();
@@ -102,10 +115,14 @@ static void getCategoryAndTitle(const std::string &str, std::string *category,
     }
 }
 
+// StatsAccumulator::Print：按照类别分组，格式化输出所有统计结果。
+// 输出内容按类别排序，同一类别内的统计项按类型（计数器、内存、分布等）排列。
 void StatsAccumulator::Print(FILE *dest) {
     fprintf(dest, "Statistics:\n");
+    // 使用map按类别名排序存储要输出的统计项
     std::map<std::string, std::vector<std::string>> toPrint;
 
+    // 输出整数计数器：跳过值为零的计数器
     for (auto &counter : counters) {
         if (counter.second == 0) continue;
         std::string category, title;
@@ -179,6 +196,7 @@ void StatsAccumulator::Print(FILE *dest) {
             denom, (double)num / (double)denom));
     }
 
+    // 按类别分组输出所有统计结果
     for (auto &categories : toPrint) {
         fprintf(dest, "  %s\n", categories.first.c_str());
         for (auto &item : categories.second)
@@ -186,6 +204,8 @@ void StatsAccumulator::Print(FILE *dest) {
     }
 }
 
+// StatsAccumulator::Clear：清空所有类别的统计数据，
+// 包括计数器、内存、整数/浮点分布、百分比和比率
 void StatsAccumulator::Clear() {
     counters.clear();
     memoryCounters.clear();
@@ -204,9 +224,14 @@ void StatsAccumulator::Clear() {
 PBRT_THREAD_LOCAL uint64_t ProfilerState;
 static std::atomic<bool> profilerRunning{false};
 
+// InitProfiler：初始化性能剖析器。
+// 设置定时器信号处理器，以固定频率（默认100Hz）中断程序执行，
+// 记录当前程序计数器所处的性能分类状态，用于后续分析各部分耗时比例。
 void InitProfiler() {
     CHECK(!profilerRunning);
 
+    // 提前访问每个线程的ProfilerState变量，
+    // 确保其线程局部存储已在此时分配，避免在信号处理器中触发动态内存分配
     // Access the per-thread ProfilerState variable now, so that there's no
     // risk of its first access being in the signal handler (which in turn
     // would cause dynamic memory allocation, which is illegal in a signal
@@ -216,6 +241,7 @@ void InitProfiler() {
     ClearProfiler();
 
     profileStartTime = std::chrono::system_clock::now();
+// 设置定时器，定期中断系统以进行性能采样
 // Set timer to periodically interrupt the system for profiling
 #ifdef PBRT_HAVE_ITIMER
     struct sigaction sa;
@@ -238,10 +264,15 @@ void InitProfiler() {
 
 static std::atomic<int> profilerSuspendCount{0};
 
+// SuspendProfiler：暂停剖析器采样（增加挂起计数）
 void SuspendProfiler() { ++profilerSuspendCount; }
 
+// ResumeProfiler：恢复剖析器采样（减少挂起计数，确保不小于0）
 void ResumeProfiler() { CHECK_GE(--profilerSuspendCount, 0); }
 
+// ProfilerWorkerThreadInit：工作线程的剖析器初始化。
+// 确保在信号处理器安装之前访问线程局部的ProfilerState变量，
+// 触发线程局部存储的动态内存分配，避免在信号处理器中执行此操作。
 void ProfilerWorkerThreadInit() {
 #ifdef PBRT_HAVE_ITIMER
     // The per-thread initialization in the worker threads has to happen
@@ -257,6 +288,7 @@ void ProfilerWorkerThreadInit() {
 #endif  // PBRT_HAVE_ITIMER
 }
 
+// ClearProfiler：清空剖析器采样数据，将所有采样计数归零
 void ClearProfiler() {
     for (ProfileSample &ps : profileSamples) {
         ps.profilerState = 0;
@@ -264,6 +296,7 @@ void ClearProfiler() {
     }
 }
 
+// CleanupProfiler：清理剖析器，禁用定时器并停止采样
 void CleanupProfiler() {
     CHECK(profilerRunning);
 #ifdef PBRT_HAVE_ITIMER
@@ -279,16 +312,23 @@ void CleanupProfiler() {
 }
 
 #ifdef PBRT_HAVE_ITIMER
+// ReportProfileSample：在定时器信号处理器中调用的采样报告函数。
+// 记录当前ProfilerState（性能分类状态），
+// 使用哈希表存储状态及其出现次数的统计信息。
+// 注意：此函数在信号处理器上下文中执行，不能进行动态内存分配。
 static void ReportProfileSample(int, siginfo_t *, void *) {
+    // 如果剖析器被挂起，或者当前状态为0（可能是ProgressReporter线程），则跳过采样
     if (profilerSuspendCount > 0) return;
-    if (ProfilerState == 0) return;  // A ProgressReporter thread, most likely.
+    if (ProfilerState == 0) return;  // 很可能是ProgressReporter线程
 
+    // 计算ProfilerState的哈希值，定位到哈希表的槽位
     uint64_t h = std::hash<uint64_t>{}(ProfilerState) % (profileHashSize - 1);
     int count = 0;
+    // 线性探测法解决哈希冲突
     while (count < profileHashSize &&
            profileSamples[h].profilerState != ProfilerState &&
            profileSamples[h].profilerState != 0) {
-        // Wrap around to the start if we hit the end.
+        // 到达末尾时回绕到开头
         if (++h == profileHashSize) h = 0;
         ++count;
     }
@@ -298,6 +338,8 @@ static void ReportProfileSample(int, siginfo_t *, void *) {
 }
 #endif  // PBRT_HAVE_ITIMER
 
+// timeString：根据时间百分比计算并格式化为"小时:分钟:秒.厘秒"格式的字符串。
+// 用于在剖析结果中以可读格式显示各分类的累计耗时。
 static std::string timeString(float pct, std::chrono::system_clock::time_point now) {
     pct /= 100.;  // remap passed value to to [0,1]
     int64_t ns =
@@ -315,6 +357,9 @@ static std::string timeString(float pct, std::chrono::system_clock::time_point n
     return StringPrintf("%4d:%02d:%02d.%02d", h, m, s, ms);
 }
 
+// ReportProfilerResults：输出性能剖析结果到指定文件流。
+// 计算各性能分类的采样比例，以扁平化和层次化两种方式展示结果，
+// 并附带每个分类的绝对耗时。
 void ReportProfilerResults(FILE *dest) {
 #ifdef PBRT_HAVE_ITIMER
     std::chrono::system_clock::time_point now = std::chrono::system_clock::now();

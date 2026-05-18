@@ -32,16 +32,19 @@
 
 
 // filters/gaussian.cpp*
+// 高斯滤波器实现：使用可分离的高斯函数计算每个像素位置的权重
 #include "filters/gaussian.h"
 #include "paramset.h"
 
 namespace pbrt {
 
 // Gaussian Filter Method Definitions
+// Evaluate: 计算高斯滤波器在点p处的权重，通过对x和y方向的一维高斯值相乘得到二维权重
 Float GaussianFilter::Evaluate(const Point2f &p) const {
     return Gaussian(p.x, expX) * Gaussian(p.y, expY);
 }
 
+// CreateGaussianFilter: 根据参数集创建高斯滤波器，从参数中读取xwidth、ywidth和alpha
 GaussianFilter *CreateGaussianFilter(const ParamSet &ps) {
     // Find common filter parameters
     Float xw = ps.FindOneFloat("xwidth", 2.f);

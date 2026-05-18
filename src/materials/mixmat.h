@@ -39,12 +39,16 @@
 #define PBRT_MATERIALS_MIXMAT_H
 
 // materials/mixmat.h*
+// 文件描述: 混合材质的头文件。实现两种材质的加权混合，
+// 通过纹理权重控制混合比例。
 #include "pbrt.h"
 #include "material.h"
 
 namespace pbrt {
 
 // MixMaterial Declarations
+// 混合材质类，将两种材质(m1, m2)按纹理权重(scale)进行混合，
+// 用于创建复杂的组合材质效果。
 class MixMaterial : public Material {
   public:
     // MixMaterial Public Methods
@@ -52,16 +56,18 @@ class MixMaterial : public Material {
                 const std::shared_ptr<Material> &m2,
                 const std::shared_ptr<Texture<Spectrum>> &scale)
         : m1(m1), m2(m2), scale(scale) {}
+    // 计算散射函数: 混合两种材质的BSDF
     void ComputeScatteringFunctions(SurfaceInteraction *si, MemoryArena &arena,
                                     TransportMode mode,
                                     bool allowMultipleLobes) const;
 
   private:
     // MixMaterial Private Data
-    std::shared_ptr<Material> m1, m2;
-    std::shared_ptr<Texture<Spectrum>> scale;
+    std::shared_ptr<Material> m1, m2;         // 被混合的两种材质
+    std::shared_ptr<Texture<Spectrum>> scale; // 混合权重纹理
 };
 
+// 创建混合材质对象的工厂函数
 MixMaterial *CreateMixMaterial(const TextureParams &mp,
                                const std::shared_ptr<Material> &m1,
                                const std::shared_ptr<Material> &m2);

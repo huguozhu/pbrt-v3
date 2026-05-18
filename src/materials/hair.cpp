@@ -31,6 +31,8 @@
  */
 
 // materials/hair.cpp*
+// 文件描述: 头发材质的实现。基于双圆柱模型的头发散射BSDF，
+// 支持纵向散射(Mp)、方位角散射(Np)和多路径散射(p阶散射项)。
 #include <array>
 #include <numeric>
 #include "interaction.h"
@@ -48,6 +50,7 @@ namespace pbrt {
 inline Float I0(Float x), LogI0(Float x);
 
 // Hair Local Functions
+// 纵向散射函数Mp: 使用高斯模型(小粗糙度)或双指数模型描述头发表面的纵向散射分布
 static Float Mp(Float cosThetaI, Float cosThetaO, Float sinThetaI,
                 Float sinThetaO, Float v) {
     Float a = cosThetaI * cosThetaO / v;
@@ -60,12 +63,13 @@ static Float Mp(Float cosThetaI, Float cosThetaO, Float sinThetaI,
     return mp;
 }
 
+// 修正贝塞尔函数I0(x)的级数展开近似
 inline Float I0(Float x) {
     Float val = 0;
     Float x2i = 1;
     int64_t ifact = 1;
     int i4 = 1;
-    // I0(x) \approx Sum_i x^(2i) / (4^i (i!)^2)
+    // I0(x) ≈ Sum_i x^(2i) / (4^i (i!)^2)
     for (int i = 0; i < 10; ++i) {
         if (i > 1) ifact *= i;
         val += x2i / (i4 * Sqr(ifact));
@@ -75,6 +79,7 @@ inline Float I0(Float x) {
     return val;
 }
 
+// 计算log(I0(x))，对大x使用渐近近似以避免数值溢出
 inline Float LogI0(Float x) {
     if (x > 12)
         return x + 0.5 * (-std::log(2 * Pi) + std::log(1 / x) + 1 / (8 * x));
@@ -82,52 +87,59 @@ inline Float LogI0(Float x) {
         return std::log(I0(x));
 }
 
+// 计算p阶散射衰减项Ap: 包括菲涅耳反射和透射衰减
 static std::array<Spectrum, pMax + 1> Ap(Float cosThetaO, Float eta, Float h,
                                          const Spectrum &T) {
     std::array<Spectrum, pMax + 1> ap;
-    // Compute $p=0$ attenuation at initial cylinder intersection
+    // 计算第0阶散射衰减: 光线在圆柱表面的初始菲涅耳反射
     Float cosGammaO = SafeSqrt(1 - h * h);
     Float cosTheta = cosThetaO * cosGammaO;
     Float f = FrDielectric(cosTheta, 1.f, eta);
     ap[0] = f;
 
-    // Compute $p=1$ attenuation term
+    // 计算第1阶散射衰减: 折射进入再射出(经过一次内部传输)
     ap[1] = Sqr(1 - f) * T;
 
-    // Compute attenuation terms up to $p=_pMax_$
+    // 计算到pMax阶的衰减项
     for (int p = 2; p < pMax; ++p) ap[p] = ap[p - 1] * T * f;
 
-    // Compute attenuation term accounting for remaining orders of scattering
+    // 计算剩余高阶散射的衰减项(几何级数求和)
     ap[pMax] = ap[pMax - 1] * f * T / (Spectrum(1.f) - T * f);
     return ap;
 }
 
+// 计算p阶散射的方位角偏移量
 inline Float Phi(int p, Float gammaO, Float gammaT) {
     return 2 * p * gammaT - 2 * gammaO + p * Pi;
 }
 
+// Logistic分布函数(用于头发方位角散射建模)
 inline Float Logistic(Float x, Float s) {
     x = std::abs(x);
     return std::exp(-x / s) / (s * Sqr(1 + std::exp(-x / s)));
 }
 
+// Logistic分布的累积分布函数
 inline Float LogisticCDF(Float x, Float s) {
     return 1 / (1 + std::exp(-x / s));
 }
 
+// 截断Logistic分布(限定在[a, b]区间内)
 inline Float TrimmedLogistic(Float x, Float s, Float a, Float b) {
     CHECK_LT(a, b);
     return Logistic(x, s) / (LogisticCDF(b, s) - LogisticCDF(a, s));
 }
 
+// 方位角散射函数Np: 使用截断Logistic分布建模头发绕轴的方位角散射
 inline Float Np(Float phi, int p, Float s, Float gammaO, Float gammaT) {
     Float dphi = phi - Phi(p, gammaO, gammaT);
-    // Remap _dphi_ to $[-\pi,\pi]$
+    // 将dphi映射到[-Pi, Pi]区间
     while (dphi > Pi) dphi -= 2 * Pi;
     while (dphi < -Pi) dphi += 2 * Pi;
     return TrimmedLogistic(dphi, s, -Pi, Pi);
 }
 
+// 从截断Logistic分布中采样
 static Float SampleTrimmedLogistic(Float u, Float s, Float a, Float b) {
     CHECK_LT(a, b);
     Float k = LogisticCDF(b, s) - LogisticCDF(a, s);
@@ -137,6 +149,7 @@ static Float SampleTrimmedLogistic(Float u, Float s, Float a, Float b) {
 }
 
 // HairMaterial Method Definitions
+// 计算散射函数: 根据参数创建头发BSDF，支持sigma_a/color/黑色素浓度三种方式指定吸收
 void HairMaterial::ComputeScatteringFunctions(SurfaceInteraction *si,
                                               MemoryArena &arena,
                                               TransportMode mode,
@@ -161,11 +174,12 @@ void HairMaterial::ComputeScatteringFunctions(SurfaceInteraction *si,
             std::max(Float(0), pheomelanin ? pheomelanin->Evaluate(*si) : 0));
     }
 
-    // Offset along width
+    // 沿头发宽度方向的偏移量，范围[-1, 1]
     Float h = -1 + 2 * si->uv[1];
     si->bsdf->Add(ARENA_ALLOC(arena, HairBSDF)(h, e, sig_a, bm, bn, a));
 }
 
+// 创建头发材质对象的工厂函数
 HairMaterial *CreateHairMaterial(const TextureParams &mp) {
     std::shared_ptr<Texture<Spectrum>> sigma_a =
         mp.GetSpectrumTextureOrNull("sigma_a");
@@ -209,7 +223,7 @@ HairMaterial *CreateHairMaterial(const TextureParams &mp) {
                 "Ignoring \"color\" parameter since "
                 "\"eumelanin\"/\"pheomelanin\" was provided.");
     } else {
-        // Default: brown-ish hair.
+        // 默认参数: 棕色头发
         sigma_a = std::make_shared<ConstantTexture<Spectrum>>(
             HairBSDF::SigmaAFromConcentration(1.3, 0.));
     }
@@ -224,6 +238,7 @@ HairMaterial *CreateHairMaterial(const TextureParams &mp) {
 }
 
 // HairBSDF Method Definitions
+// 头发BSDF构造函数: 计算纵向方差、方位角Logistic比例因子和α角项
 HairBSDF::HairBSDF(Float h, Float eta, const Spectrum &sigma_a, Float beta_m,
                    Float beta_n, Float alpha)
     : BxDF(BxDFType(BSDF_GLOSSY | BSDF_REFLECTION | BSDF_TRANSMISSION)),
@@ -236,7 +251,7 @@ HairBSDF::HairBSDF(Float h, Float eta, const Spectrum &sigma_a, Float beta_m,
     CHECK(h >= -1 && h <= 1);
     CHECK(beta_m >= 0 && beta_m <= 1);
     CHECK(beta_n >= 0 && beta_n <= 1);
-    // Compute longitudinal variance from $\beta_m$
+    // 从beta_m计算纵向方差(经验公式)
     static_assert(
         pMax >= 3,
         "Longitudinal variance code must be updated to handle low pMax");
@@ -247,12 +262,12 @@ HairBSDF::HairBSDF(Float h, Float eta, const Spectrum &sigma_a, Float beta_m,
         // TODO: is there anything better here?
         v[p] = v[2];
 
-    // Compute azimuthal logistic scale factor from $\beta_n$
+    // 从beta_n计算方位角Logistic分布的比例因子
     s = SqrtPiOver8 *
         (0.265f * beta_n + 1.194f * Sqr(beta_n) + 5.372f * Pow<22>(beta_n));
     CHECK(!std::isnan(s));
 
-    // Compute $\alpha$ terms for hair scales
+    // 计算头发鳞片的α角项(用于处理头发倾斜角度)
     sin2kAlpha[0] = std::sin(Radians(alpha));
     cos2kAlpha[0] = SafeSqrt(1 - Sqr(sin2kAlpha[0]));
     for (int i = 1; i < 3; ++i) {
@@ -261,43 +276,44 @@ HairBSDF::HairBSDF(Float h, Float eta, const Spectrum &sigma_a, Float beta_m,
     }
 }
 
+// 评估头发BSDF值: 对pMax阶散射求和，结合纵向和方位角散射分量
 Spectrum HairBSDF::f(const Vector3f &wo, const Vector3f &wi) const {
-    // Compute hair coordinate system terms related to _wo_
+    // 计算wo的头发坐标系相关项
     Float sinThetaO = wo.x;
     Float cosThetaO = SafeSqrt(1 - Sqr(sinThetaO));
     Float phiO = std::atan2(wo.z, wo.y);
 
-    // Compute hair coordinate system terms related to _wi_
+    // 计算wi的头发坐标系相关项
     Float sinThetaI = wi.x;
     Float cosThetaI = SafeSqrt(1 - Sqr(sinThetaI));
     Float phiI = std::atan2(wi.z, wi.y);
 
-    // Compute $\cos \thetat$ for refracted ray
+    // 计算折射光线的cosThetaT
     Float sinThetaT = sinThetaO / eta;
     Float cosThetaT = SafeSqrt(1 - Sqr(sinThetaT));
 
-    // Compute $\gammat$ for refracted ray
+    // 计算折射光线的gammaT
     Float etap = std::sqrt(eta * eta - Sqr(sinThetaO)) / cosThetaO;
     Float sinGammaT = h / etap;
     Float cosGammaT = SafeSqrt(1 - Sqr(sinGammaT));
     Float gammaT = SafeASin(sinGammaT);
 
-    // Compute the transmittance _T_ of a single path through the cylinder
+    // 计算光线单次穿过头发表面圆柱的透射率
     Spectrum T = Exp(-sigma_a * (2 * cosGammaT / cosThetaT));
 
-    // Evaluate hair BSDF
+    // 评估头发BSDF: 对pMax阶散射求和
     Float phi = phiI - phiO;
     std::array<Spectrum, pMax + 1> ap = Ap(cosThetaO, eta, h, T);
     Spectrum fsum(0.);
     for (int p = 0; p < pMax; ++p) {
-        // Compute $\sin \thetao$ and $\cos \thetao$ terms accounting for scales
+        // 计算考虑鳞片倾斜的sinThetaO和cosThetaO
         Float sinThetaOp, cosThetaOp;
         if (p == 0) {
             sinThetaOp = sinThetaO * cos2kAlpha[1] - cosThetaO * sin2kAlpha[1];
             cosThetaOp = cosThetaO * cos2kAlpha[1] + sinThetaO * sin2kAlpha[1];
         }
 
-        // Handle remainder of $p$ values for hair scale tilt
+        // 处理其余p值的鳞片倾斜
         else if (p == 1) {
             sinThetaOp = sinThetaO * cos2kAlpha[0] + cosThetaO * sin2kAlpha[0];
             cosThetaOp = cosThetaO * cos2kAlpha[0] - sinThetaO * sin2kAlpha[0];
@@ -309,13 +325,13 @@ Spectrum HairBSDF::f(const Vector3f &wo, const Vector3f &wi) const {
             cosThetaOp = cosThetaO;
         }
 
-        // Handle out-of-range $\cos \thetao$ from scale adjustment
+        // 处理鳞片调整导致的cosThetaO越界情况
         cosThetaOp = std::abs(cosThetaOp);
         fsum += Mp(cosThetaI, cosThetaOp, sinThetaI, sinThetaOp, v[p]) * ap[p] *
                 Np(phi, p, s, gammaO, gammaT);
     }
 
-    // Compute contribution of remaining terms after _pMax_
+    // 计算pMax之后的剩余项贡献(各向同性分布近似)
     fsum += Mp(cosThetaI, cosThetaO, sinThetaI, sinThetaO, v[pMax]) * ap[pMax] /
             (2.f * Pi);
     if (AbsCosTheta(wi) > 0) fsum /= AbsCosTheta(wi);
@@ -323,15 +339,16 @@ Spectrum HairBSDF::f(const Vector3f &wo, const Vector3f &wi) const {
     return fsum;
 }
 
+// 计算各阶散射项Ap的概率密度值(用于重要性采样选择p值)
 std::array<Float, pMax + 1> HairBSDF::ComputeApPdf(Float cosThetaO) const {
-    // Compute array of $A_p$ values for _cosThetaO_
+    // 计算给定cosThetaO下的Ap值数组
     Float sinThetaO = SafeSqrt(1 - cosThetaO * cosThetaO);
 
-    // Compute $\cos \thetat$ for refracted ray
+    // 计算折射光线的cosThetaT
     Float sinThetaT = sinThetaO / eta;
     Float cosThetaT = SafeSqrt(1 - Sqr(sinThetaT));
 
-    // Compute $\gammat$ for refracted ray
+    // 计算折射光线的gammaT
     Float etap = std::sqrt(eta * eta - Sqr(sinThetaO)) / cosThetaO;
     Float sinGammaT = h / etap;
     Float cosGammaT = SafeSqrt(1 - Sqr(sinGammaT));
@@ -340,7 +357,7 @@ std::array<Float, pMax + 1> HairBSDF::ComputeApPdf(Float cosThetaO) const {
     Spectrum T = Exp(-sigma_a * (2 * cosGammaT / cosThetaT));
     std::array<Spectrum, pMax + 1> ap = Ap(cosThetaO, eta, h, T);
 
-    // Compute $A_p$ PDF from individual $A_p$ terms
+    // 从各个Ap项计算Ap的PDF(归一化为总和为1)
     std::array<Float, pMax + 1> apPdf;
     Float sumY =
         std::accumulate(ap.begin(), ap.end(), Float(0),
@@ -349,17 +366,18 @@ std::array<Float, pMax + 1> HairBSDF::ComputeApPdf(Float cosThetaO) const {
     return apPdf;
 }
 
+// 从头发BSDF采样: 先选择p阶散射项，再分别采样纵向和方位角分量
 Spectrum HairBSDF::Sample_f(const Vector3f &wo, Vector3f *wi, const Point2f &u2,
                             Float *pdf, BxDFType *sampledType) const {
-    // Compute hair coordinate system terms related to _wo_
+    // 计算wo的头发坐标系相关项
     Float sinThetaO = wo.x;
     Float cosThetaO = SafeSqrt(1 - Sqr(sinThetaO));
     Float phiO = std::atan2(wo.z, wo.y);
 
-    // Derive four random samples from _u2_
+    // 从u2中派生出4个随机样本
     Point2f u[2] = {DemuxFloat(u2[0]), DemuxFloat(u2[1])};
 
-    // Determine which term $p$ to sample for hair scattering
+    // 确定要采样的p阶散射项(根据Ap的PDF进行离散采样)
     std::array<Float, pMax + 1> apPdf = ComputeApPdf(cosThetaO);
     int p;
     for (p = 0; p < pMax; ++p) {
@@ -367,7 +385,7 @@ Spectrum HairBSDF::Sample_f(const Vector3f &wo, Vector3f *wi, const Point2f &u2,
         u[0][0] -= apPdf[p];
     }
 
-    // Rotate $\sin \thetao$ and $\cos \thetao$ to account for hair scale tilt
+    // 根据鳞片倾斜旋转sinThetaO和cosThetaO
     Float sinThetaOp, cosThetaOp;
     if (p == 0) {
         sinThetaOp = sinThetaO * cos2kAlpha[1] - cosThetaO * sin2kAlpha[1];
@@ -384,7 +402,7 @@ Spectrum HairBSDF::Sample_f(const Vector3f &wo, Vector3f *wi, const Point2f &u2,
         cosThetaOp = cosThetaO;
     }
 
-    // Sample $M_p$ to compute $\thetai$
+    // 从Mp采样计算ThetaI
     u[1][0] = std::max(u[1][0], Float(1e-5));
     Float cosTheta =
         1 + v[p] * std::log(u[1][0] + (1 - u[1][0]) * std::exp(-2 / v[p]));
@@ -393,7 +411,7 @@ Spectrum HairBSDF::Sample_f(const Vector3f &wo, Vector3f *wi, const Point2f &u2,
     Float sinThetaI = -cosTheta * sinThetaOp + sinTheta * cosPhi * cosThetaOp;
     Float cosThetaI = SafeSqrt(1 - Sqr(sinThetaI));
 
-    // Sample $N_p$ to compute $\Delta\phi$
+    // 从Np采样计算DeltaPhi(方位角差)
 
     // Compute $\gammat$ for refracted ray
     Float etap = std::sqrt(eta * eta - Sqr(sinThetaO)) / cosThetaO;
@@ -406,22 +424,22 @@ Spectrum HairBSDF::Sample_f(const Vector3f &wo, Vector3f *wi, const Point2f &u2,
     else
         dphi = 2 * Pi * u[0][1];
 
-    // Compute _wi_ from sampled hair scattering angles
+    // 从采样的头发散射角度计算wi方向
     Float phiI = phiO + dphi;
     *wi = Vector3f(sinThetaI, cosThetaI * std::cos(phiI),
                    cosThetaI * std::sin(phiI));
 
-    // Compute PDF for sampled hair scattering direction _wi_
+    // 计算采样到wi的概率密度
     *pdf = 0;
     for (int p = 0; p < pMax; ++p) {
-        // Compute $\sin \thetao$ and $\cos \thetao$ terms accounting for scales
+        // 计算考虑鳞片倾斜的sinThetaO和cosThetaO
         Float sinThetaOp, cosThetaOp;
         if (p == 0) {
             sinThetaOp = sinThetaO * cos2kAlpha[1] - cosThetaO * sin2kAlpha[1];
             cosThetaOp = cosThetaO * cos2kAlpha[1] + sinThetaO * sin2kAlpha[1];
         }
 
-        // Handle remainder of $p$ values for hair scale tilt
+        // 处理其余p值的鳞片倾斜
         else if (p == 1) {
             sinThetaOp = sinThetaO * cos2kAlpha[0] + cosThetaO * sin2kAlpha[0];
             cosThetaOp = cosThetaO * cos2kAlpha[0] - sinThetaO * sin2kAlpha[0];
@@ -433,7 +451,7 @@ Spectrum HairBSDF::Sample_f(const Vector3f &wo, Vector3f *wi, const Point2f &u2,
             cosThetaOp = cosThetaO;
         }
 
-        // Handle out-of-range $\cos \thetao$ from scale adjustment
+        // 处理鳞片调整导致的cosThetaO越界情况
         cosThetaOp = std::abs(cosThetaOp);
         *pdf += Mp(cosThetaI, cosThetaOp, sinThetaI, sinThetaOp, v[p]) *
                 apPdf[p] * Np(dphi, p, s, gammaO, gammaT);
@@ -444,13 +462,14 @@ Spectrum HairBSDF::Sample_f(const Vector3f &wo, Vector3f *wi, const Point2f &u2,
     return f(wo, *wi);
 }
 
+// 计算头发BSDF采样概率密度: 对pMax阶散射的PDF求和
 Float HairBSDF::Pdf(const Vector3f &wo, const Vector3f &wi) const {
-    // Compute hair coordinate system terms related to _wo_
+    // 计算wo的头发坐标系相关项
     Float sinThetaO = wo.x;
     Float cosThetaO = SafeSqrt(1 - Sqr(sinThetaO));
     Float phiO = std::atan2(wo.z, wo.y);
 
-    // Compute hair coordinate system terms related to _wi_
+    // 计算wi的头发坐标系相关项
     Float sinThetaI = wi.x;
     Float cosThetaI = SafeSqrt(1 - Sqr(sinThetaI));
     Float phiI = std::atan2(wi.z, wi.y);
@@ -460,21 +479,21 @@ Float HairBSDF::Pdf(const Vector3f &wo, const Vector3f &wi) const {
     Float sinGammaT = h / etap;
     Float gammaT = SafeASin(sinGammaT);
 
-    // Compute PDF for $A_p$ terms
+    // 计算Ap项的PDF
     std::array<Float, pMax + 1> apPdf = ComputeApPdf(cosThetaO);
 
-    // Compute PDF sum for hair scattering events
+    // 计算头发散射事件的PDF总和
     Float phi = phiI - phiO;
     Float pdf = 0;
     for (int p = 0; p < pMax; ++p) {
-        // Compute $\sin \thetao$ and $\cos \thetao$ terms accounting for scales
+        // 计算考虑鳞片倾斜的sinThetaO和cosThetaO
         Float sinThetaOp, cosThetaOp;
         if (p == 0) {
             sinThetaOp = sinThetaO * cos2kAlpha[1] - cosThetaO * sin2kAlpha[1];
             cosThetaOp = cosThetaO * cos2kAlpha[1] + sinThetaO * sin2kAlpha[1];
         }
 
-        // Handle remainder of $p$ values for hair scale tilt
+        // 处理其余p值的鳞片倾斜
         else if (p == 1) {
             sinThetaOp = sinThetaO * cos2kAlpha[0] + cosThetaO * sin2kAlpha[0];
             cosThetaOp = cosThetaO * cos2kAlpha[0] - sinThetaO * sin2kAlpha[0];
@@ -486,7 +505,7 @@ Float HairBSDF::Pdf(const Vector3f &wo, const Vector3f &wi) const {
             cosThetaOp = cosThetaO;
         }
 
-        // Handle out-of-range $\cos \thetao$ from scale adjustment
+        // 处理鳞片调整导致的cosThetaO越界情况
         cosThetaOp = std::abs(cosThetaOp);
         pdf += Mp(cosThetaI, cosThetaOp, sinThetaI, sinThetaOp, v[p]) *
                apPdf[p] * Np(phi, p, s, gammaO, gammaT);
@@ -505,6 +524,7 @@ std::string HairBSDF::ToString() const {
         std::string("  ]");
 }
 
+// 从真黑色素(eumelanin)和棕黑色素(pheomelanin)浓度计算吸收系数
 Spectrum HairBSDF::SigmaAFromConcentration(Float ce, Float cp) {
     Float sigma_a[3];
     Float eumelaninSigmaA[3] = {0.419f, 0.697f, 1.37f};
@@ -514,6 +534,7 @@ Spectrum HairBSDF::SigmaAFromConcentration(Float ce, Float cp) {
     return Spectrum::FromRGB(sigma_a);
 }
 
+// 从反射率反推头发的吸收系数(经验模型)
 Spectrum HairBSDF::SigmaAFromReflectance(const Spectrum &c, Float beta_n) {
     Spectrum sigma_a;
     for (int i = 0; i < Spectrum::nSamples; ++i)

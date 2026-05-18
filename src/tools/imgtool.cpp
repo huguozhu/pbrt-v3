@@ -1,5 +1,6 @@
 //
 // imgtool.cpp
+// 文件功能：图像处理工具箱，支持组装、查看、转换、比较、信息和天空环境图生成等操作
 //
 // Various useful operations on images.
 //
@@ -22,6 +23,7 @@ extern "C" {
 using namespace pbrt;
 
 static void usage(const char *msg = nullptr, ...) {
+    // 打印使用帮助信息
     if (msg) {
         va_list args;
         va_start(args, msg);
@@ -84,6 +86,7 @@ makesky options:
     exit(1);
 }
 
+// 生成天空环境贴图：使用ArHosek天空模型生成高动态范围环境贴图
 int makesky(int argc, char *argv[]) {
     const char *outfile = "sky.exr";
     float albedo = 0.5;
@@ -141,6 +144,7 @@ int makesky(int argc, char *argv[]) {
 
     PBRT_CONSTEXPR int num_channels = 9;
     // Three wavelengths around red, three around green, and three around blue.
+    // 分别围绕红、绿、蓝三个颜色通道各取三个波长进行采样
     double lambda[num_channels] = {630, 680, 710, 500, 530, 560, 460, 480, 490};
 
     ArHosekSkyModelState *skymodel_state[num_channels];
@@ -151,11 +155,13 @@ int makesky(int argc, char *argv[]) {
 
     // Vector pointing at the sun. Note that elevation is measured from the
     // horizon--not the zenith, as it is elsewhere in pbrt.
+    // 指向太阳的方向向量：注意仰角是从地平线开始测量，而非天顶（与pbrt其他部分不同）
     Vector3f sunDir(0., std::sin(elevation), std::cos(elevation));
 
     int nTheta = resolution, nPhi = 2 * nTheta;
     std::vector<Float> img(3 * nTheta * nPhi, 0.f);
     ParallelInit();
+    // 使用并行循环生成天空贴图：对每个像素方向计算天空辐射亮度
     ParallelFor([&](int64_t t) {
         Float theta = float(t + 0.5) / nTheta * Pi;
         if (theta > Pi / 2.) return;
@@ -187,6 +193,7 @@ int makesky(int argc, char *argv[]) {
     return 0;
 }
 
+// assemble命令：将多个EXR图像文件合成为一张完整的大图
 int assemble(int argc, char *argv[]) {
     if (argc == 0) usage("no filenames provided to \"assemble\"?");
     const char *outfile = nullptr;
@@ -223,6 +230,7 @@ int assemble(int argc, char *argv[]) {
 
         if (!fullImg) {
             // First image read.
+            // 第一张图像：初始化完整图像缓冲区
             fullRes = Point2i(dspw.pMax - dspw.pMin);
             fullImg.reset(new RGBSpectrum[fullRes.x * fullRes.y]);
             seenPixel.resize(fullRes.x * fullRes.y);
@@ -256,6 +264,7 @@ int assemble(int argc, char *argv[]) {
         }
 
         // Copy pixels.
+        // 复制像素到完整图像缓冲区
         for (int y = 0; y < res.y; ++y)
             for (int x = 0; x < res.x; ++x) {
                 int fullOffset = (y + dataWindow.pMin.y) * fullRes.x +
@@ -284,6 +293,7 @@ int assemble(int argc, char *argv[]) {
     return 0;
 }
 
+// cat命令：以文本形式输出图像像素值（支持按亮度排序）
 int cat(int argc, char *argv[]) {
     if (argc == 0) usage("no filenames provided to \"cat\"?");
     bool sort = false;
@@ -330,6 +340,7 @@ int cat(int argc, char *argv[]) {
     return 0;
 }
 
+// diff命令：比较两张图像的差异，可输出差异图像
 int diff(int argc, char *argv[]) {
     float tol = 0.;
     const char *outfile = nullptr;
@@ -440,6 +451,7 @@ int diff(int argc, char *argv[]) {
     return 0;
 }
 
+// info命令：显示图像信息，包括分辨率、像素统计、最小/最大/平均RGB值
 int info(int argc, char *argv[]) {
     int err = 0;
     for (int i = 0; i < argc; ++i) {
@@ -489,12 +501,15 @@ int info(int argc, char *argv[]) {
     return err;
 }
 
+// bloom函数：对高亮区域应用辉光效果
+// 首先提取超过阈值的像素，然后多次高斯模糊，最后叠加回原图
 std::unique_ptr<RGBSpectrum[]> bloom(std::unique_ptr<RGBSpectrum[]> image,
                                      const Point2i &res, Float level, int width,
                                      Float scale, int iters) {
     std::vector<std::unique_ptr<RGBSpectrum[]>> blurred;
 
     // First, threshold the source image
+    // 第一步：对源图像进行阈值处理，提取高亮像素
     int nSurvivors = 0;
     std::unique_ptr<RGBSpectrum[]> thresholded(new RGBSpectrum[res.x * res.y]);
     for (int i = 0; i < res.x * res.y; ++i) {
@@ -524,6 +539,7 @@ std::unique_ptr<RGBSpectrum[]> bloom(std::unique_ptr<RGBSpectrum[]> image,
     int radius = width / 2;
 
     // Compute filter weights
+    // 计算高斯滤波权重
     Float sigma = 2;  // TODO: make a parameter
     std::vector<Float> wts(width, Float(0));
     Float wtSum = 0;
@@ -582,6 +598,7 @@ std::unique_ptr<RGBSpectrum[]> bloom(std::unique_ptr<RGBSpectrum[]> image,
     return image;
 }
 
+// convert命令：图像格式转换和处理，支持缩放、辉光、色调映射、去噪点等
 int convert(int argc, char *argv[]) {
     float scale = 1.f;
     int repeat = 1;
@@ -761,6 +778,7 @@ int convert(int argc, char *argv[]) {
     return 0;
 }
 
+// main函数：命令行入口，分发到不同的子命令
 int main(int argc, char *argv[]) {
     google::InitGoogleLogging(argv[0]);
     FLAGS_stderrthreshold = 1; // Warning and above.

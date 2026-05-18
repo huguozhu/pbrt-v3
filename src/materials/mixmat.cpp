@@ -32,6 +32,7 @@
 
 
 // materials/mixmat.cpp*
+// 文件描述: 混合材质的实现。通过纹理权重混合两种材质的BSDF。
 #include "materials/mixmat.h"
 #include "materials/matte.h"
 #include "spectrum.h"
@@ -43,18 +44,19 @@
 namespace pbrt {
 
 // MixMaterial Method Definitions
+// 计算散射函数: 按纹理权重混合两种材质的BSDF分布
 void MixMaterial::ComputeScatteringFunctions(SurfaceInteraction *si,
                                              MemoryArena &arena,
                                              TransportMode mode,
                                              bool allowMultipleLobes) const {
-    // Compute weights and original _BxDF_s for mix material
+    // 计算混合权重并分别获取两种材质的BxDF
     Spectrum s1 = scale->Evaluate(*si).Clamp();
     Spectrum s2 = (Spectrum(1.f) - s1).Clamp();
     SurfaceInteraction si2 = *si;
     m1->ComputeScatteringFunctions(si, arena, mode, allowMultipleLobes);
     m2->ComputeScatteringFunctions(&si2, arena, mode, allowMultipleLobes);
 
-    // Initialize _si->bsdf_ with weighted mixture of _BxDF_s
+    // 将两种材质的BxDF按权重混合后加入最终BSDF
     int n1 = si->bsdf->NumComponents(), n2 = si2.bsdf->NumComponents();
     for (int i = 0; i < n1; ++i)
         si->bsdf->bxdfs[i] =
@@ -63,6 +65,7 @@ void MixMaterial::ComputeScatteringFunctions(SurfaceInteraction *si,
         si->bsdf->Add(ARENA_ALLOC(arena, ScaledBxDF)(si2.bsdf->bxdfs[i], s2));
 }
 
+// 创建混合材质对象的工厂函数
 MixMaterial *CreateMixMaterial(const TextureParams &mp,
                                const std::shared_ptr<Material> &m1,
                                const std::shared_ptr<Material> &m2) {

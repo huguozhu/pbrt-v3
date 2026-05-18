@@ -1,5 +1,7 @@
 //
 // obj2pbrt.cpp
+// 文件功能：将Wavefront OBJ文件转换为PBRT场景描述格式
+// 基于Syoyo Fujita的tinyobjloader库
 //
 // Convert Wavefront OBJ files to PBRT.
 // Based on Syoyo Fujita's tinyobjloader:
@@ -63,6 +65,7 @@
 
 namespace tinyobj {
 
+// 材质数据结构：包含颜色、纹理和光照属性
 typedef struct {
   std::string name;
 
@@ -97,6 +100,7 @@ typedef struct {
   std::vector<std::string> stringValues;
 } tag_t;
 
+// 网格数据结构：包含顶点位置、法线、纹理坐标和索引
 typedef struct {
   std::vector<float> positions;
   std::vector<float> normals;
@@ -201,6 +205,7 @@ private:
 };
 
 /// Loads .obj from a file.
+/// 从文件加载OBJ模型
 /// 'shapes' will be filled with parsed shape data
 /// The function returns error string.
 /// Returns true when loading .obj become success.
@@ -215,6 +220,7 @@ bool LoadObj(std::vector<shape_t> &shapes,       // [output]
 
 /// Loads object from a std::istream, uses GetMtlIStreamFn to retrieve
 /// std::istream for materials.
+/// 从输入流加载OBJ对象
 /// Returns true when loading .obj become success.
 /// Returns warning and error message into `err`
 bool LoadObj(std::vector<shape_t> &shapes,       // [output]
@@ -224,6 +230,7 @@ bool LoadObj(std::vector<shape_t> &shapes,       // [output]
              unsigned int flags = 1);
 
 /// Loads materials into std::map
+/// 加载材质库文件
 void LoadMtl(std::map<std::string, int> &material_map, // [output]
              std::vector<material_t> &materials,       // [output]
              std::istream &inStream);
@@ -1290,6 +1297,7 @@ bool LoadObj(std::vector<shape_t> &shapes,       // [output]
 ///////////////////////////////////////////////////////////////////////////
 // The above is tiny_obj_loader.{h,cc} basically directly; pbrt specific
 // code follows...
+// 以上是tiny_obj_loader的代码；下面是pbrt特有的转换代码
 
 #include <set>
 #include <stdio.h>
@@ -1298,6 +1306,7 @@ bool LoadObj(std::vector<shape_t> &shapes,       // [output]
 
 using namespace tinyobj;
 
+// 打印使用帮助信息
 static void usage() {
     fprintf(stderr, "usage: obj2pbrt [--ptexquads] <OBJ filename> <pbrt filename>\n");
     exit(1);
@@ -1336,6 +1345,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    // 计算场景包围盒
     float bounds[2][3] = {{1e30, 1e30, 1e30}, {-1e30, -1e30, -1e30}};
     for (size_t i = 0; i < shapes.size(); ++i) {
         const shape_t &shape = shapes[i];
@@ -1356,6 +1366,7 @@ int main(int argc, char *argv[]) {
     int numMeshes = shapes.size();
 
     // First, make named materials for all of the materials.
+    // 第一步：为所有材质创建命名材质
     for (const material_t &mtl : materials) {
         bool hasDiffuseTex = (mtl.diffuse_texname != "");
         if (mtl.diffuse_texname != "") {
@@ -1445,6 +1456,7 @@ int main(int argc, char *argv[]) {
         for (int id : mesh.material_ids) materialIds.insert(id);
 
         // Now emit the chunks of the mesh for each material
+    // 按材质分组输出网格的各个部分
         for (int id : materialIds) {
             if (id == -1) {
                 fprintf(f, "# Material unspecified in OBJ file\n");
@@ -1468,6 +1480,7 @@ int main(int argc, char *argv[]) {
             }
 
             // Now emit all the faces that have the matching material id.
+            // 输出所有具有匹配材质ID的面
             struct Point3f { float x, y, z; };
             struct Point2f { float x, y; };
             struct Normal3f { float x, y, z; };
@@ -1479,6 +1492,7 @@ int main(int argc, char *argv[]) {
             int nQuadFaces = 0;
 
             // Loop over all of the triangles' material ids.
+            // 遍历所有三角形的材质ID
             for (size_t i = 0; i < mesh.material_ids.size(); ++i) {
                 // Skip the ones that don't match the current id that we're
                 // emitting the mesh for.
@@ -1530,6 +1544,7 @@ int main(int argc, char *argv[]) {
                     }
 
                     // Compute remapped vertex indices.
+                    // 计算重新映射的顶点索引
                     for (int v = 0; v < 3; ++v) {
                         int objIndex = mesh.indices[3 * i + v];
                         if (indexRemap.find(objIndex) == indexRemap.end()) {

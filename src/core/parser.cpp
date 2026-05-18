@@ -31,6 +31,9 @@
  */
 
 // core/parser.cpp*
+// Parser: pbrt场景描述文件解析器，将.pbrt格式的场景文件解析为一系列的API调用，
+// 包含分词器(Tokenizer)、参数解析(parseParams)和顶层场景解析(parse)功能，
+// 支持文件包含(Include)、内存映射文件加速和完整的pbrt场景语法解析
 #include "parser.h"
 #include "api.h"
 #include "fileutil.h"
@@ -62,11 +65,13 @@ namespace pbrt {
 Loc *parserLoc;
 
 static std::string toString(string_view s) {
+    // 将string_view转换为std::string，便于后续处理
     return std::string(s.data(), s.size());
 }
 
 STAT_MEMORY_COUNTER("Memory/Tokenizer buffers", tokenizerMemory);
 
+// 解码转义字符（如\n、\t、\\等），遇到EOF或非法转义时报错退出
 static char decodeEscaped(int ch) {
     switch (ch) {
     case EOF:
@@ -95,6 +100,7 @@ static char decodeEscaped(int ch) {
     return 0;  // NOTREACHED
 }
 
+// 从文件创建Tokenizer，支持stdin("-")、mmap(POSIX)、文件映射(Windows)和标准文件读取四种模式
 std::unique_ptr<Tokenizer> Tokenizer::CreateFromFile(
     const std::string &filename,
     std::function<void(const char *)> errorCallback) {
@@ -197,6 +203,7 @@ std::unique_ptr<Tokenizer> Tokenizer::CreateFromFile(
 #endif
 }
 
+// 从字符串创建Tokenizer，用于解析内存中的场景描述
 std::unique_ptr<Tokenizer> Tokenizer::CreateFromString(
     std::string str, std::function<void(const char *)> errorCallback) {
     // return std::make_unique<Tokenizer>(std::move(str));
@@ -204,6 +211,7 @@ std::unique_ptr<Tokenizer> Tokenizer::CreateFromString(
         new Tokenizer(std::move(str), std::move(errorCallback)));
 }
 
+// Tokenizer构造：从字符串内容初始化，设置读写位置指针，统计内存使用
 Tokenizer::Tokenizer(std::string str,
                      std::function<void(const char *)> errorCallback)
     : loc("<stdin>"),
@@ -214,6 +222,7 @@ Tokenizer::Tokenizer(std::string str,
     tokenizerMemory += contents.size();
 }
 
+// Tokenizer构造（mmap/文件映射版本）：从内存映射区域初始化，设置读写位置指针
 #if defined(PBRT_HAVE_MMAP) || defined(PBRT_IS_WINDOWS)
 Tokenizer::Tokenizer(void *ptr, size_t len, std::string filename,
                      std::function<void(const char *)> errorCallback)
@@ -226,6 +235,7 @@ Tokenizer::Tokenizer(void *ptr, size_t len, std::string filename,
 }
 #endif
 
+// Tokenizer析构：释放mmap或Windows文件映射的内存区域
 Tokenizer::~Tokenizer() {
 #ifdef PBRT_HAVE_MMAP
     if (unmapPtr && unmapLength > 0)
@@ -249,6 +259,7 @@ Tokenizer::~Tokenizer() {
 #endif
 }
 
+// 获取下一个token：跳过空白和注释，识别引号字符串、方括号、关键字和数字token
 string_view Tokenizer::Next() {
     while (true) {
         const char *tokenStart = pos;
@@ -259,6 +270,7 @@ string_view Tokenizer::Next() {
             // nothing
         } else if (ch == '"') {
             // scan to closing quote
+            // 扫描到结束引号，处理转义字符
             bool haveEscaped = false;
             while ((ch = getChar()) != '"') {
                 if (ch == EOF) {
@@ -296,6 +308,7 @@ string_view Tokenizer::Next() {
             return {tokenStart, size_t(1)};
         } else if (ch == '#') {
             // comment: scan to EOL (or EOF)
+            // 注释以#开头，扫描到行尾（或EOF）
             while ((ch = getChar()) != EOF) {
                 if (ch == '\n' || ch == '\r') {
                     ungetChar();
@@ -307,6 +320,7 @@ string_view Tokenizer::Next() {
         } else {
             // Regular statement or numeric token; scan until we hit a
             // space, opening quote, or bracket.
+            // 普通关键字或数字token，扫描直到遇到空白、引号或方括号
             while ((ch = getChar()) != EOF) {
                 if (ch == ' ' || ch == '\n' || ch == '\t' || ch == '\r' ||
                     ch == '"' || ch == '[' || ch == ']') {
@@ -319,6 +333,7 @@ string_view Tokenizer::Next() {
     }
 }
 
+// 解析数值token：支持整数(strtol)和浮点数(strtof/strtod)，返回double类型
 static double parseNumber(string_view str) {
     // Fast path for a single digit
     if (str.size() == 1) {
@@ -367,10 +382,12 @@ static double parseNumber(string_view str) {
     return val;
 }
 
+// 判断字符串是否为引号包围的字符串（以"开头和结尾）
 inline bool isQuotedString(string_view str) {
     return str.size() >= 2 && str[0] == '"' && str.back() == '"';
 }
 
+// 去除字符串两端的引号，返回原始内容，如果非引号字符串则报错
 static string_view dequoteString(string_view str) {
     if (!isQuotedString(str)) {
         Error("\"%s\": expected quoted string", toString(str).c_str());
@@ -382,16 +399,17 @@ static string_view dequoteString(string_view str) {
     return str;
 }
 
+// ParamListItem: 参数列表项，存储参数名、数值或字符串值数组及其大小
 struct ParamListItem {
     std::string name;
-    double *doubleValues = nullptr;
-    const char **stringValues = nullptr;
-    size_t size = 0;
-    bool isString = false;
+    double *doubleValues = nullptr;			// 数值数组（适用于int/float/point等类型）
+    const char **stringValues = nullptr;	// 字符串数组（适用于string/texture/bool类型）
+    size_t size = 0;						// 值的数量
+    bool isString = false;					// 是否为字符串类型
 };
 
-PBRT_CONSTEXPR int TokenOptional = 0;
-PBRT_CONSTEXPR int TokenRequired = 1;
+PBRT_CONSTEXPR int TokenOptional = 0;	// token可选，文件结束时不报错
+PBRT_CONSTEXPR int TokenRequired = 1;	// token必需，文件结束时致命错误
 
 enum {
     PARAM_TYPE_INT,
@@ -410,6 +428,7 @@ enum {
     PARAM_TYPE_TEXTURE
 };
 
+// 解析参数类型声明字符串（如"float foo"），识别类型并提取参数名
 static bool lookupType(const std::string &decl, int *type, std::string &sname) {
     *type = 0;
     // Skip leading space
@@ -484,6 +503,7 @@ static bool lookupType(const std::string &decl, int *type, std::string &sname) {
     return true;
 }
 
+// 将参数类型枚举值转换为字符串名称，用于错误消息显示
 static const char *paramTypeToName(int type) {
     switch (type) {
     case PARAM_TYPE_INT:
@@ -520,6 +540,7 @@ static const char *paramTypeToName(int type) {
     }
 }
 
+// 将解析后的参数项添加到ParamSet中，根据类型进行相应的转换（int/bool/float/point/vector/rgb/spectrum/string/texture）
 static void AddParam(ParamSet &ps, const ParamListItem &item,
                      SpectrumType spectrumType) {
     int type;
@@ -548,6 +569,7 @@ static void AddParam(ParamSet &ps, const ParamListItem &item,
         int nItems = item.size;
         if (type == PARAM_TYPE_INT) {
             // parser doesn't handle ints, so convert from doubles here....
+            // 解析器本身不支持整数类型，需要从double转换
             int nAlloc = nItems;
             std::unique_ptr<int[]> idata(new int[nAlloc]);
             for (int j = 0; j < nAlloc; ++j)
@@ -555,6 +577,7 @@ static void AddParam(ParamSet &ps, const ParamListItem &item,
             ps.AddInt(name, std::move(idata), nItems);
         } else if (type == PARAM_TYPE_BOOL) {
             // strings -> bools
+            // 将字符串"true"/"false"转换为布尔值
             int nAlloc = item.size;
             std::unique_ptr<bool[]> bdata(new bool[nAlloc]);
             for (int j = 0; j < nAlloc; ++j) {
@@ -708,6 +731,7 @@ static void AddParam(ParamSet &ps, const ParamListItem &item,
         Warning("Type of parameter \"%s\" is unknown", item.name.c_str());
 }
 
+// 解析参数列表：读取类型声明和对应的值，支持单个值或方括号包围的值数组
 template <typename Next, typename Unget>
 ParamSet parseParams(Next nextToken, Unget ungetToken, MemoryArena &arena,
                      SpectrumType spectrumType) {
@@ -782,7 +806,8 @@ ParamSet parseParams(Next nextToken, Unget ungetToken, MemoryArena &arena,
 
 extern int catIndentCount;
 
-// Parsing Global Interface
+// 顶层场景解析函数：根据token首字母分派到对应的pbrt API调用（Attribute、Camera、Film、Integrator、Light、Material、Shape等）
+// 支持文件栈管理（Include指令）和注释过滤
 static void parse(std::unique_ptr<Tokenizer> t) {
     std::vector<std::unique_ptr<Tokenizer>> fileStack;
     fileStack.push_back(std::move(t));
@@ -1091,6 +1116,7 @@ static void parse(std::unique_ptr<Tokenizer> t) {
     }
 }
 
+// pbrtParseFile: 从文件解析pbrt场景，设置搜索目录后创建Tokenizer并调用parse
 void pbrtParseFile(std::string filename) {
     if (filename != "-") SetSearchDirectory(DirectoryContaining(filename));
 
@@ -1101,6 +1127,7 @@ void pbrtParseFile(std::string filename) {
     parse(std::move(t));
 }
 
+// pbrtParseString: 从字符串解析pbrt场景描述（用于内存中的场景定义）
 void pbrtParseString(std::string str) {
     auto tokError = [](const char *msg) { Error("%s", msg); exit(1); };
     std::unique_ptr<Tokenizer> t =

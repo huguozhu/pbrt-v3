@@ -39,29 +39,36 @@
 #define PBRT_SHAPES_CURVE_H
 
 // shapes/curve.h*
+/**
+ * @file curve.h
+ * @brief 曲线(Curve)几何体模块
+ *
+ * 定义了贝塞尔曲线几何体，支持三种曲线类型：Flat(平面)、Cylinder(圆柱)和Ribbon(带形)。
+ * 曲线由四个控制点定义的贝塞尔曲线和宽度参数来确定。
+ */
 #include "shape.h"
 
 namespace pbrt {
 struct CurveCommon;
 
-// CurveType Declarations
+// CurveType Declarations / 曲线类型声明
 enum class CurveType { Flat, Cylinder, Ribbon };
 
-// CurveCommon Declarations
+// CurveCommon Declarations / 曲线共享数据结构声明
 struct CurveCommon {
     CurveCommon(const Point3f c[4], Float w0, Float w1, CurveType type,
                 const Normal3f *norm);
-    const CurveType type;
-    Point3f cpObj[4];
-    Float width[2];
-    Normal3f n[2];
-    Float normalAngle, invSinNormalAngle;
+    const CurveType type;   /**< 曲线类型 */
+    Point3f cpObj[4];       /**< 对象空间中的4个贝塞尔控制点 */
+    Float width[2];         /**< 曲线端点宽度 */
+    Normal3f n[2];          /**< 法线(仅Ribbon类型使用) */
+    Float normalAngle, invSinNormalAngle;  /**< 法线角度参数 */
 };
 
-// Curve Declarations
+// Curve Declarations / 曲线声明
 class Curve : public Shape {
   public:
-    // Curve Public Methods
+    // Curve Public Methods / 曲线公有方法
     Curve(const Transform *ObjectToWorld, const Transform *WorldToObject,
           bool reverseOrientation, const std::shared_ptr<CurveCommon> &common,
           Float uMin, Float uMax)
@@ -69,24 +76,42 @@ class Curve : public Shape {
           common(common),
           uMin(uMin),
           uMax(uMax) {}
+    /**
+     * @brief 计算对象空间包围盒
+     */
     Bounds3f ObjectBound() const;
+    /**
+     * @brief 光线-曲线求交测试
+     */
     bool Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
                    bool testAlphaTexture) const;
+    /**
+     * @brief 计算曲线面积
+     */
     Float Area() const;
+    /**
+     * @brief 在曲线表面采样一个点
+     */
     Interaction Sample(const Point2f &u, Float *pdf) const;
 
   private:
-    // Curve Private Methods
+    // Curve Private Methods / 曲线私有方法
+    /**
+     * @brief 递归光线-曲线求交(逐层细分贝塞尔曲线段)
+     */
     bool recursiveIntersect(const Ray &r, Float *tHit,
                             SurfaceInteraction *isect, const Point3f cp[4],
                             const Transform &rayToObject, Float u0, Float u1,
                             int depth) const;
 
-    // Curve Private Data
-    const std::shared_ptr<CurveCommon> common;
-    const Float uMin, uMax;
+    // Curve Private Data / 曲线私有数据
+    const std::shared_ptr<CurveCommon> common; /**< 曲线共享数据 */
+    const Float uMin, uMax;                    /**< 曲线段的参数范围 */
 };
 
+/**
+ * @brief 创建曲线形状的工厂函数
+ */
 std::vector<std::shared_ptr<Shape>> CreateCurveShape(const Transform *o2w,
                                                      const Transform *w2o,
                                                      bool reverseOrientation,

@@ -32,6 +32,7 @@
 
 
 // lights/distant.cpp*
+// DistantLight实现：平行光，所有光线沿固定方向从无限远处照射，用于模拟太阳光等方向性光源
 #include "lights/distant.h"
 #include "paramset.h"
 #include "sampling.h"
@@ -40,12 +41,14 @@
 namespace pbrt {
 
 // DistantLight Method Definitions
+// DistantLight构造函数：初始化光辐射度和光照方向
 DistantLight::DistantLight(const Transform &LightToWorld, const Spectrum &L,
                            const Vector3f &wLight)
     : Light((int)LightFlags::DeltaDirection, LightToWorld, MediumInterface()),
       L(L),
       wLight(Normalize(LightToWorld(wLight))) {}
 
+// Sample_Li：在场景边界球外采样一个光源点，返回沿固定方向入射的辐射度
 Spectrum DistantLight::Sample_Li(const Interaction &ref, const Point2f &u,
                                  Vector3f *wi, Float *pdf,
                                  VisibilityTester *vis) const {
@@ -58,14 +61,17 @@ Spectrum DistantLight::Sample_Li(const Interaction &ref, const Point2f &u,
     return L;
 }
 
+// Power：计算平行光的总功率
 Spectrum DistantLight::Power() const {
     return L * Pi * worldRadius * worldRadius;
 }
 
+// Pdf_Li：平行光的PDF为0（Delta方向分布，不能通过连续采样得到）
 Float DistantLight::Pdf_Li(const Interaction &, const Vector3f &) const {
     return 0.f;
 }
 
+// Sample_Le：从平行光发射光线，在垂直光方向的圆盘上采样起点
 Spectrum DistantLight::Sample_Le(const Point2f &u1, const Point2f &u2,
                                  Float time, Ray *ray, Normal3f *nLight,
                                  Float *pdfPos, Float *pdfDir) const {

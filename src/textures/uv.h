@@ -39,6 +39,7 @@
 #define PBRT_TEXTURES_UV_H
 
 // textures/uv.h*
+// 模块功能：UV纹理（UVTexture），将纹理坐标(u,v)直接映射为颜色值，用于可视化UV映射
 #include "pbrt.h"
 #include "texture.h"
 #include "paramset.h"
@@ -46,6 +47,7 @@
 namespace pbrt {
 
 // UVTexture Declarations
+// UV纹理类声明：将纹理坐标直接显示为RGB颜色（R=u, G=v, B=0）
 class UVTexture : public Texture<Spectrum> {
   public:
     // UVTexture Public Methods

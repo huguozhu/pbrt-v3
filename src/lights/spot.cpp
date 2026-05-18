@@ -32,6 +32,7 @@
 
 
 // lights/spot.cpp*
+// SpotLight实现：聚光源，在圆锥范围内发射光线，具有从中心到边缘的平滑衰减效果
 #include "lights/spot.h"
 #include "paramset.h"
 #include "sampling.h"
@@ -41,6 +42,7 @@
 namespace pbrt {
 
 // SpotLight Method Definitions
+// SpotLight构造函数：初始化光源位置、强度和聚光锥角参数
 SpotLight::SpotLight(const Transform &LightToWorld,
                      const MediumInterface &mediumInterface, const Spectrum &I,
                      Float totalWidth, Float falloffStart)
@@ -50,6 +52,7 @@ SpotLight::SpotLight(const Transform &LightToWorld,
       cosTotalWidth(std::cos(Radians(totalWidth))),
       cosFalloffStart(std::cos(Radians(falloffStart))) {}
 
+// Sample_Li：返回聚光源在参考点方向上的辐射度（含衰减因子）
 Spectrum SpotLight::Sample_Li(const Interaction &ref, const Point2f &u,
                               Vector3f *wi, Float *pdf,
                               VisibilityTester *vis) const {
@@ -61,6 +64,7 @@ Spectrum SpotLight::Sample_Li(const Interaction &ref, const Point2f &u,
     return I * Falloff(-*wi) / DistanceSquared(pLight, ref.p);
 }
 
+// Falloff：计算聚光灯光照方向的衰减因子，在圆锥边界处平滑过渡到0
 Float SpotLight::Falloff(const Vector3f &w) const {
     Vector3f wl = Normalize(WorldToLight(w));
     Float cosTheta = wl.z;

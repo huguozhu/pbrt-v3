@@ -32,11 +32,13 @@
 
 
 // textures/checkerboard.cpp*
+// 文件功能：棋盘格纹理（CheckerboardTexture）的创建函数实现
 #include "textures/checkerboard.h"
 
 namespace pbrt {
 
 // CheckerboardTexture Method Definitions
+// 创建浮点型棋盘格纹理：支持2D和3D版本
 Texture<Float> *CreateCheckerboardFloatTexture(const Transform &tex2world,
                                                const TextureParams &tp) {
     int dim = tp.FindInt("dimension", 2);

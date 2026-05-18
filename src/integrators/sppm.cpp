@@ -32,6 +32,8 @@
 
 
 // integrators/sppm.cpp*
+// SPPMIntegrator实现：随机渐进式光子映射（Stochastic Progressive Photon Mapping），
+// 通过多轮迭代进行相机路径追踪和光子追踪，渐进式收敛到全局光照解，特别适合焦散等复杂光照效果
 #include "integrators/sppm.h"
 #include "parallel.h"
 #include "scene.h"
@@ -60,6 +62,7 @@ STAT_MEMORY_COUNTER("Memory/SPPM Pixels", pixelMemoryBytes);
 STAT_FLOAT_DISTRIBUTION("Memory/SPPM BSDF and Grid Memory", memoryArenaMB);
 
 // SPPM Local Definitions
+// SPPMPixel：SPPM像素结构，存储该像素的可见点信息、光子通量累积和搜索半径
 struct SPPMPixel {
     // SPPMPixel Public Methods
     SPPMPixel() : M(0) {}
@@ -108,6 +111,7 @@ inline unsigned int hash(const Point3i &p, int hashSize) {
 }
 
 // SPPM Method Definitions
+// Render：SPPM主渲染函数，包含多轮迭代，每轮由相机路径生成、光子追踪和像素更新三阶段组成
 void SPPMIntegrator::Render(const Scene &scene) {
     ProfilePhase p(Prof::IntegratorRender);
     // Initialize _pixelBounds_ and _pixels_ array for SPPM
@@ -131,8 +135,10 @@ void SPPMIntegrator::Render(const Scene &scene) {
                    (pixelExtent.y + tileSize - 1) / tileSize);
     ProgressReporter progress(2 * nIterations, "Rendering");
     std::vector<MemoryArena> perThreadArenas(MaxThreadIndex());
+    // 主迭代循环：每轮迭代执行可见点生成、光子追踪和像素更新
     for (int iter = 0; iter < nIterations; ++iter) {
         // Generate SPPM visible points
+        // 阶段1：从相机发射光线，在漫反射/光泽表面创建可见点
         {
             ProfilePhase _(Prof::SPPMCameraPass);
             ParallelFor2D([&](Point2i tile) {
@@ -239,6 +245,7 @@ void SPPMIntegrator::Render(const Scene &scene) {
         progress.Update();
 
         // Create grid of all SPPM visible points
+        // 阶段2：构建可见点空间网格，用于高效的光子-可见点匹配
         int gridRes[3];
         Bounds3f gridBounds;
         // Allocate grid for SPPM visible points
@@ -301,6 +308,7 @@ void SPPMIntegrator::Render(const Scene &scene) {
         }
 
         // Trace photons and accumulate contributions
+        // 阶段3：从光源发射光子，沿路径追踪并将光子贡献添加到附近可见点
         {
             ProfilePhase _(Prof::SPPMPhotonPass);
             std::vector<MemoryArena> photonShootArenas(MaxThreadIndex());
@@ -415,6 +423,7 @@ void SPPMIntegrator::Render(const Scene &scene) {
         }
 
         // Update pixel values from this pass's photons
+        // 阶段4：根据本轮光子累积结果更新每个像素的辐射度、搜索半径和累积通量
         {
             ProfilePhase _(Prof::SPPMStatsUpdate);
             ParallelFor([&](int i) {
@@ -422,6 +431,7 @@ void SPPMIntegrator::Render(const Scene &scene) {
                 if (p.M > 0) {
                     // Update pixel photon count, search radius, and $\tau$ from
                     // photons
+                    // 更新像素的光子计数N、搜索半径Rnew和累积辐射通量tau
                     Float gamma = (Float)2 / (Float)3;
                     Float Nnew = p.N + gamma * p.M;
                     Float Rnew = p.radius * std::sqrt(Nnew / (p.N + p.M));
@@ -503,6 +513,7 @@ void SPPMIntegrator::Render(const Scene &scene) {
     progress.Done();
 }
 
+// CreateSPPMIntegrator：根据参数集创建SPPMIntegrator实例
 Integrator *CreateSPPMIntegrator(const ParamSet &params,
                                  std::shared_ptr<const Camera> camera) {
     int nIterations =

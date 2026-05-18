@@ -39,12 +39,16 @@
 #define PBRT_MATERIALS_UBER_H
 
 // materials/uber.h*
+// 文件描述: 综合(万能)材质的头文件。结合了漫反射、高光、镜面反射、镜面透射和透明度控制。
 #include "pbrt.h"
 #include "material.h"
 
 namespace pbrt {
 
 // UberMaterial Declarations
+// Uber(万能)材质类，是一个综合材质，同时支持：
+// Kd(漫反射)、Ks(微表面高光)、Kr(镜面反射)、Kt(镜面透射)、
+// opacity(不透明度)、roughness(粗糙度)、eta(折射率)等参数。
 class UberMaterial : public Material {
   public:
     UberMaterial(const std::shared_ptr<Texture<Spectrum>> &Kd,
@@ -70,18 +74,20 @@ class UberMaterial : public Material {
           bumpMap(bumpMap),
           remapRoughness(remapRoughness) {}
 
+    // 计算散射函数: 创建Uber材质的综合BSDF
     void ComputeScatteringFunctions(SurfaceInteraction *si, MemoryArena &arena,
                                     TransportMode mode,
                                     bool allowMultipleLobes) const;
 
   private:
     // UberMaterial Private Data
-    std::shared_ptr<Texture<Spectrum>> Kd, Ks, Kr, Kt, opacity;
-    std::shared_ptr<Texture<Float>> roughness, roughnessu, roughnessv, eta,
+    std::shared_ptr<Texture<Spectrum>> Kd, Ks, Kr, Kt, opacity;  // 漫反射、高光、反射、透射、不透明度
+    std::shared_ptr<Texture<Float>> roughness, roughnessu, roughnessv, eta,  // 粗糙度(U/V)、折射率
         bumpMap;
-    bool remapRoughness;
+    bool remapRoughness;  // 是否重映射粗糙度
 };
 
+// 创建Uber材质对象的工厂函数
 UberMaterial *CreateUberMaterial(const TextureParams &mp);
 
 }  // namespace pbrt

@@ -39,6 +39,8 @@
 #define PBRT_MATERIALS_KDSUBSURFACE_H
 
 // materials/kdsubsurface.h*
+// 文件描述: 基于Kd(漫反射颜色)和mfp(平均自由路径)的次表面散射材质的头文件。
+// 使用预计算表格方法从漫反射颜色和平均自由路径推导吸收和散射系数。
 #include "pbrt.h"
 #include "reflection.h"
 #include "material.h"
@@ -47,6 +49,8 @@
 namespace pbrt {
 
 // KdSubsurfaceMaterial Declarations
+// KdSubsurface材质类，通过漫反射反射率Kd和平均自由路径mfp
+// 计算散射属性，本质上是SubsurfaceMaterial的便捷接口。
 class KdSubsurfaceMaterial : public Material {
   public:
     // KdSubsurfaceMaterial Public Methods
@@ -73,6 +77,7 @@ class KdSubsurfaceMaterial : public Material {
           table(100, 64) {
         ComputeBeamDiffusionBSSRDF(g, eta, &table);
     }
+    // 计算散射函数: 创建BSDF和BSSRDF
     void ComputeScatteringFunctions(SurfaceInteraction *si, MemoryArena &arena,
                                     TransportMode mode,
                                     bool allowMultipleLobes) const;
@@ -88,6 +93,7 @@ class KdSubsurfaceMaterial : public Material {
     BSSRDFTable table;
 };
 
+// 创建KdSubsurface材质对象的工厂函数
 KdSubsurfaceMaterial *CreateKdSubsurfaceMaterial(const TextureParams &mp);
 
 }  // namespace pbrt

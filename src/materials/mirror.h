@@ -39,12 +39,15 @@
 #define PBRT_MATERIALS_MIRROR_H
 
 // materials/mirror.h*
+// 文件描述: 镜面材质的头文件。实现完美镜面反射(Snell反射)。
 #include "pbrt.h"
 #include "material.h"
 
 namespace pbrt {
 
 // MirrorMaterial Declarations
+// 镜面材质类，使用完美镜面反射模型(SpecularReflection)，
+// 配合FresnelNoOp(无菲涅耳效应)实现理想的镜面反射。
 class MirrorMaterial : public Material {
   public:
     // MirrorMaterial Public Methods
@@ -53,16 +56,18 @@ class MirrorMaterial : public Material {
         Kr = r;
         bumpMap = bump;
     }
+    // 计算散射函数: 创建镜面反射BSDF
     void ComputeScatteringFunctions(SurfaceInteraction *si, MemoryArena &arena,
                                     TransportMode mode,
                                     bool allowMultipleLobes) const;
 
   private:
     // MirrorMaterial Private Data
-    std::shared_ptr<Texture<Spectrum>> Kr;
-    std::shared_ptr<Texture<Float>> bumpMap;
+    std::shared_ptr<Texture<Spectrum>> Kr;    // 镜面反射率
+    std::shared_ptr<Texture<Float>> bumpMap;  // 凹凸贴图
 };
 
+// 创建镜面材质对象的工厂函数
 MirrorMaterial *CreateMirrorMaterial(const TextureParams &mp);
 
 }  // namespace pbrt

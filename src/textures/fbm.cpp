@@ -32,11 +32,13 @@
 
 
 // textures/fbm.cpp*
+// 文件功能：分形布朗运动纹理（FBmTexture）的创建函数实现
 #include "textures/fbm.h"
 
 namespace pbrt {
 
 // FBmTexture Method Definitions
+// 创建浮点型FBM纹理：从参数中读取八度音阶数和粗糙度
 FBmTexture<Float> *CreateFBmFloatTexture(const Transform &tex2world,
                                          const TextureParams &tp) {
     // Initialize 3D texture mapping _map_ from _tp_
@@ -48,6 +50,7 @@ FBmTexture<Float> *CreateFBmFloatTexture(const Transform &tex2world,
 FBmTexture<Spectrum> *CreateFBmSpectrumTexture(const Transform &tex2world,
                                                const TextureParams &tp) {
     // Initialize 3D texture mapping _map_ from _tp_
+    // 创建光谱型FBM纹理：使用3D恒等映射，默认8个八度，粗糙度0.5
     std::unique_ptr<TextureMapping3D> map(new IdentityMapping3D(tex2world));
     return new FBmTexture<Spectrum>(std::move(map), tp.FindInt("octaves", 8),
                                     tp.FindFloat("roughness", .5f));

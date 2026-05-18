@@ -39,6 +39,7 @@
 #define PBRT_TEXTURES_WINDY_H
 
 // textures/windy.h*
+// 模块功能：风吹纹理（WindyTexture），模拟风吹过表面的效果，使用分形噪声合成
 #include "pbrt.h"
 #include "texture.h"
 #include "paramset.h"
@@ -46,6 +47,7 @@
 namespace pbrt {
 
 // WindyTexture Declarations
+// 风吹纹理类声明：通过两个FBM层分别模拟风力强度和波浪高度
 template <typename T>
 class WindyTexture : public Texture<T> {
   public:

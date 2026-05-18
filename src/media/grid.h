@@ -39,6 +39,8 @@
 #define PBRT_MEDIA_GRID_H
 
 // media/grid.h*
+// 文件描述: 网格密度介质(体积雾/云)的头文件。基于三维密度网格的参与介质，
+// 使用三线性插值计算空间中的密度值，支持光线步进和delta-tracking采样。
 #include "medium.h"
 #include "transform.h"
 #include "stats.h"
@@ -48,6 +50,9 @@ namespace pbrt {
 STAT_MEMORY_COUNTER("Memory/Volume density grid", densityBytes);
 
 // GridDensityMedium Declarations
+// 网格密度介质类，使用三维体素网格存储密度值。
+// 通过WorldToMedium变换将光线转换到介质空间进行采样，
+// 采用delta-tracking(比率追踪)方法计算透射率和散射事件。
 class GridDensityMedium : public Medium {
   public:
     // GridDensityMedium Public Methods
@@ -76,25 +81,28 @@ class GridDensityMedium : public Medium {
         invMaxDensity = 1 / maxDensity;
     }
 
+    // 计算给定位置p处的密度值(使用三线性插值)
     Float Density(const Point3f &p) const;
     Float D(const Point3i &p) const {
         Bounds3i sampleBounds(Point3i(0, 0, 0), Point3i(nx, ny, nz));
         if (!InsideExclusive(p, sampleBounds)) return 0;
         return density[(p.z * ny + p.y) * nx + p.x];
     }
+    // 采样介质中的散射事件(使用delta-tracking)
     Spectrum Sample(const Ray &ray, Sampler &sampler, MemoryArena &arena,
                     MediumInteraction *mi) const;
+    // 计算光线穿过介质的透射率(使用比率追踪)
     Spectrum Tr(const Ray &ray, Sampler &sampler) const;
 
   private:
     // GridDensityMedium Private Data
-    const Spectrum sigma_a, sigma_s;
-    const Float g;
-    const int nx, ny, nz;
-    const Transform WorldToMedium;
-    std::unique_ptr<Float[]> density;
-    Float sigma_t;
-    Float invMaxDensity;
+    const Spectrum sigma_a, sigma_s;  // 吸收和散射系数
+    const Float g;                     // 相位函数各向异性参数
+    const int nx, ny, nz;              // 体素网格维度
+    const Transform WorldToMedium;     // 世界到介质空间的变换
+    std::unique_ptr<Float[]> density;  // 密度值数组
+    Float sigma_t;                     // 总衰减系数(sigma_a+sigma_s)
+    Float invMaxDensity;               // 最大密度的倒数
 };
 
 }  // namespace pbrt

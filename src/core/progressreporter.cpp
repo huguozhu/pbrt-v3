@@ -32,6 +32,8 @@
 
 
 // core/progressreporter.cpp*
+// ProgressReporter: 渲染进度报告器实现，在控制台显示渲染进度条、已用时间和预计剩余时间，
+// 使用独立后台线程定期更新显示，支持动态调整更新频率以减少开销
 #include "progressreporter.h"
 #include "parallel.h"
 #include "stats.h"
@@ -45,9 +47,11 @@
 
 namespace pbrt {
 
+// 获取终端宽度（字符数），用于格式化进度条的显示长度
 static int TerminalWidth();
 
 // ProgressReporter Method Definitions
+// ProgressReporter构造：初始化工作总量和标题，启动后台线程定期更新进度条显示
 ProgressReporter::ProgressReporter(int64_t totalWork, const std::string &title)
     : totalWork(std::max((int64_t)1, totalWork)),
       title(title),
@@ -79,6 +83,7 @@ ProgressReporter::ProgressReporter(int64_t totalWork, const std::string &title)
     }
 }
 
+// ProgressReporter析构：标记完成并等待后台线程结束
 ProgressReporter::~ProgressReporter() {
     if (!PbrtOptions.quiet) {
         workDone = totalWork;
@@ -88,6 +93,8 @@ ProgressReporter::~ProgressReporter() {
     }
 }
 
+// 打印进度条：显示百分比、进度条[+++++...]、已用时间和预计剩余时间，
+// 动态调整更新频率（从250ms逐渐增加到5s）以减少性能开销
 void ProgressReporter::PrintBar() {
     int barLength = TerminalWidth() - 28;
     int totalPlusses = std::max(2, barLength - (int)title.size());
@@ -146,10 +153,12 @@ void ProgressReporter::PrintBar() {
     }
 }
 
+// 标记任务完成：将已完成工作量设为总量，触发进度条显示完成状态
 void ProgressReporter::Done() {
     workDone = totalWork;
 }
 
+// 获取终端宽度：Windows使用GetConsoleScreenBufferInfo，POSIX使用ioctl(TIOCGWINSZ)，默认返回80
 static int TerminalWidth() {
 #ifdef PBRT_IS_WINDOWS
     HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);

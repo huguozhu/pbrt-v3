@@ -32,17 +32,20 @@
 
 
 // textures/scale.cpp*
+// 文件功能：缩放纹理（ScaleTexture）的创建函数实现
 #include "textures/scale.h"
 
 namespace pbrt {
 
 // ScaleTexture Method Definitions
+// 创建浮点型缩放纹理：将两个浮点纹理的值相乘
 ScaleTexture<Float, Float> *CreateScaleFloatTexture(const Transform &tex2world,
                                                     const TextureParams &tp) {
     return new ScaleTexture<Float, Float>(tp.GetFloatTexture("tex1", 1.f),
                                           tp.GetFloatTexture("tex2", 1.f));
 }
 
+// 创建光谱型缩放纹理：将两个光谱纹理的值相乘
 ScaleTexture<Spectrum, Spectrum> *CreateScaleSpectrumTexture(
     const Transform &tex2world, const TextureParams &tp) {
     return new ScaleTexture<Spectrum, Spectrum>(

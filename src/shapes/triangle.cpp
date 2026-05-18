@@ -31,6 +31,14 @@
  */
 
 // shapes/triangle.cpp*
+/**
+ * @file triangle.cpp
+ * @brief 三角形网格(Triangle)几何体的实现
+ *
+ * 实现了三角形的光线求交(基于Wald的三角形求交算法)、面积计算、
+ * 采样和立体角计算等功能。三角形是最基础的几何图元，
+ * 使用重心坐标进行插值和求交。
+ */
 #include "shapes/triangle.h"
 #include "texture.h"
 #include "textures/constant.h"
@@ -44,13 +52,17 @@ namespace pbrt {
 
 STAT_PERCENT("Intersections/Ray-triangle intersection tests", nHits, nTests);
 
-// Triangle Local Definitions
+// Triangle Local Definitions / 三角形局部定义
 static void PlyErrorCallback(p_ply, const char *message) {
     Error("PLY writing error: %s", message);
 }
 
-// Triangle Method Definitions
+// Triangle Method Definitions / 三角形方法实现
 STAT_RATIO("Scene/Triangles per triangle mesh", nTris, nMeshes);
+/**
+ * @brief TriangleMesh构造函数
+ * 将顶点从对象空间变换到世界空间，复制UV、法线和切线数据
+ */
 TriangleMesh::TriangleMesh(
     const Transform &ObjectToWorld, int nTriangles, const int *vertexIndices,
     int nVertices, const Point3f *P, const Vector3f *S, const Normal3f *N,
@@ -69,11 +81,11 @@ TriangleMesh::TriangleMesh(
                                  (S ? sizeof(*S) : 0) + (UV ? sizeof(*UV) : 0) +
                                  (fIndices ? sizeof(*fIndices) : 0));
 
-    // Transform mesh vertices to world space
+    // Transform mesh vertices to world space / 将网格顶点变换到世界空间
     p.reset(new Point3f[nVertices]);
     for (int i = 0; i < nVertices; ++i) p[i] = ObjectToWorld(P[i]);
 
-    // Copy _UV_, _N_, and _S_ vertex data, if present
+    // Copy _UV_, _N_, and _S_ vertex data, if present / 复制UV、法线和切线顶点数据(如有)
     if (UV) {
         uv.reset(new Point2f[nVertices]);
         memcpy(uv.get(), UV, nVertices * sizeof(Point2f));
@@ -91,6 +103,10 @@ TriangleMesh::TriangleMesh(
         faceIndices = std::vector<int>(fIndices, fIndices + nTriangles);
 }
 
+/**
+ * @brief 创建三角形网格形状
+ * 根据顶点数据构建TriangleMesh和Triangle列表
+ */
 std::vector<std::shared_ptr<Shape>> CreateTriangleMesh(
     const Transform *ObjectToWorld, const Transform *WorldToObject,
     bool reverseOrientation, int nTriangles, const int *vertexIndices,
@@ -109,6 +125,10 @@ std::vector<std::shared_ptr<Shape>> CreateTriangleMesh(
     return tris;
 }
 
+/**
+ * @brief 将三角形网格写入PLY文件
+ * 支持顶点位置、法线和UV坐标的输出
+ */
 bool WritePlyFile(const std::string &filename, int nTriangles,
                   const int *vertexIndices, int nVertices, const Point3f *P,
                   const Vector3f *S, const Normal3f *N, const Point2f *UV,
@@ -168,6 +188,9 @@ bool WritePlyFile(const std::string &filename, int nTriangles,
     return true;
 }
 
+/**
+ * @brief 计算三角形在对象空间的包围盒
+ */
 Bounds3f Triangle::ObjectBound() const {
     // Get triangle vertices in _p0_, _p1_, and _p2_
     const Point3f &p0 = mesh->p[v[0]];
@@ -177,6 +200,9 @@ Bounds3f Triangle::ObjectBound() const {
                  (*WorldToObject)(p2));
 }
 
+/**
+ * @brief 计算三角形在世界空间的包围盒
+ */
 Bounds3f Triangle::WorldBound() const {
     // Get triangle vertices in _p0_, _p1_, and _p2_
     const Point3f &p0 = mesh->p[v[0]];
@@ -185,6 +211,16 @@ Bounds3f Triangle::WorldBound() const {
     return Union(Bounds3f(p0, p1), p2);
 }
 
+/**
+ * @brief 光线-三角形求交(完整求交)
+ *
+ * 使用Wald算法进行光线-三角形求交测试：
+ * 1. 将三角形顶点变换到光线坐标系
+ * 2. 使用Shear变换简化求交
+ * 3. 计算重心坐标
+ * 4. 计算交点参数和误差边界
+ * 5. 处理Alpha纹理和着色法线
+ */
 bool Triangle::Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
                          bool testAlphaTexture) const {
     ProfilePhase p(Prof::TriIntersect);
@@ -194,16 +230,16 @@ bool Triangle::Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
     const Point3f &p1 = mesh->p[v[1]];
     const Point3f &p2 = mesh->p[v[2]];
 
-    // Perform ray--triangle intersection test
+    // Perform ray--triangle intersection test / 执行光线-三角形求交测试
 
-    // Transform triangle vertices to ray coordinate space
+    // Transform triangle vertices to ray coordinate space / 将三角形变换到光线坐标系
 
-    // Translate vertices based on ray origin
+    // Translate vertices based on ray origin / 基于光线原点平移顶点
     Point3f p0t = p0 - Vector3f(ray.o);
     Point3f p1t = p1 - Vector3f(ray.o);
     Point3f p2t = p2 - Vector3f(ray.o);
 
-    // Permute components of triangle vertices and ray direction
+    // Permute components of triangle vertices and ray direction / 交换顶点和光线方向的分量(使最大分量为z)
     int kz = MaxDimension(Abs(ray.d));
     int kx = kz + 1;
     if (kx == 3) kx = 0;
@@ -214,7 +250,7 @@ bool Triangle::Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
     p1t = Permute(p1t, kx, ky, kz);
     p2t = Permute(p2t, kx, ky, kz);
 
-    // Apply shear transformation to translated vertex positions
+    // Apply shear transformation to translated vertex positions / 应用Shear变换到平移后的顶点
     Float Sx = -d.x / d.z;
     Float Sy = -d.y / d.z;
     Float Sz = 1.f / d.z;
@@ -225,12 +261,12 @@ bool Triangle::Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
     p2t.x += Sx * p2t.z;
     p2t.y += Sy * p2t.z;
 
-    // Compute edge function coefficients _e0_, _e1_, and _e2_
+    // Compute edge function coefficients _e0_, _e1_, and _e2_ / 计算边函数系数(用于重心坐标计算)
     Float e0 = p1t.x * p2t.y - p1t.y * p2t.x;
     Float e1 = p2t.x * p0t.y - p2t.y * p0t.x;
     Float e2 = p0t.x * p1t.y - p0t.y * p1t.x;
 
-    // Fall back to double precision test at triangle edges
+    // Fall back to double precision test at triangle edges / 在三角形边处回退到双精度测试
     if (sizeof(Float) == sizeof(float) &&
         (e0 == 0.0f || e1 == 0.0f || e2 == 0.0f)) {
         double p2txp1ty = (double)p2t.x * (double)p1t.y;
@@ -244,7 +280,7 @@ bool Triangle::Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
         e2 = (float)(p1typ0tx - p1txp0ty);
     }
 
-    // Perform triangle edge and determinant tests
+    // Perform triangle edge and determinant tests / 执行三角形边测试和行列式测试
     if ((e0 < 0 || e1 < 0 || e2 < 0) && (e0 > 0 || e1 > 0 || e2 > 0))
         return false;
     Float det = e0 + e1 + e2;
@@ -260,7 +296,7 @@ bool Triangle::Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
     else if (det > 0 && (tScaled <= 0 || tScaled > ray.tMax * det))
         return false;
 
-    // Compute barycentric coordinates and $t$ value for triangle intersection
+    // Compute barycentric coordinates and $t$ value for triangle intersection / 计算重心坐标和t值
     Float invDet = 1 / det;
     Float b0 = e0 * invDet;
     Float b1 = e1 * invDet;
@@ -290,7 +326,7 @@ bool Triangle::Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
                    std::abs(invDet);
     if (t <= deltaT) return false;
 
-    // Compute triangle partial derivatives
+    // Compute triangle partial derivatives / 计算三角形偏导数(dpdu, dpdv)
     Vector3f dpdu, dpdv;
     Point2f uv[3];
     GetUVs(uv);
@@ -423,6 +459,10 @@ bool Triangle::Intersect(const Ray &ray, Float *tHit, SurfaceInteraction *isect,
     return true;
 }
 
+/**
+ * @brief 光线-三角形求交测试(仅判断是否相交)
+ * 用于阴影光线等场景，也支持Alpha纹理测试
+ */
 bool Triangle::IntersectP(const Ray &ray, bool testAlphaTexture) const {
     ProfilePhase p(Prof::TriIntersectP);
     ++nTests;
@@ -431,16 +471,16 @@ bool Triangle::IntersectP(const Ray &ray, bool testAlphaTexture) const {
     const Point3f &p1 = mesh->p[v[1]];
     const Point3f &p2 = mesh->p[v[2]];
 
-    // Perform ray--triangle intersection test
+    // Perform ray--triangle intersection test / 执行光线-三角形求交测试
 
-    // Transform triangle vertices to ray coordinate space
+    // Transform triangle vertices to ray coordinate space / 将三角形变换到光线坐标系
 
-    // Translate vertices based on ray origin
+    // Translate vertices based on ray origin / 基于光线原点平移顶点
     Point3f p0t = p0 - Vector3f(ray.o);
     Point3f p1t = p1 - Vector3f(ray.o);
     Point3f p2t = p2 - Vector3f(ray.o);
 
-    // Permute components of triangle vertices and ray direction
+    // Permute components of triangle vertices and ray direction / 交换顶点和光线方向的分量(使最大分量为z)
     int kz = MaxDimension(Abs(ray.d));
     int kx = kz + 1;
     if (kx == 3) kx = 0;
@@ -451,7 +491,7 @@ bool Triangle::IntersectP(const Ray &ray, bool testAlphaTexture) const {
     p1t = Permute(p1t, kx, ky, kz);
     p2t = Permute(p2t, kx, ky, kz);
 
-    // Apply shear transformation to translated vertex positions
+    // Apply shear transformation to translated vertex positions / 应用Shear变换到平移后的顶点
     Float Sx = -d.x / d.z;
     Float Sy = -d.y / d.z;
     Float Sz = 1.f / d.z;
@@ -462,12 +502,12 @@ bool Triangle::IntersectP(const Ray &ray, bool testAlphaTexture) const {
     p2t.x += Sx * p2t.z;
     p2t.y += Sy * p2t.z;
 
-    // Compute edge function coefficients _e0_, _e1_, and _e2_
+    // Compute edge function coefficients _e0_, _e1_, and _e2_ / 计算边函数系数(用于重心坐标计算)
     Float e0 = p1t.x * p2t.y - p1t.y * p2t.x;
     Float e1 = p2t.x * p0t.y - p2t.y * p0t.x;
     Float e2 = p0t.x * p1t.y - p0t.y * p1t.x;
 
-    // Fall back to double precision test at triangle edges
+    // Fall back to double precision test at triangle edges / 在三角形边处回退到双精度测试
     if (sizeof(Float) == sizeof(float) &&
         (e0 == 0.0f || e1 == 0.0f || e2 == 0.0f)) {
         double p2txp1ty = (double)p2t.x * (double)p1t.y;
@@ -481,7 +521,7 @@ bool Triangle::IntersectP(const Ray &ray, bool testAlphaTexture) const {
         e2 = (float)(p1typ0tx - p1txp0ty);
     }
 
-    // Perform triangle edge and determinant tests
+    // Perform triangle edge and determinant tests / 执行三角形边测试和行列式测试
     if ((e0 < 0 || e1 < 0 || e2 < 0) && (e0 > 0 || e1 > 0 || e2 > 0))
         return false;
     Float det = e0 + e1 + e2;
@@ -497,7 +537,7 @@ bool Triangle::IntersectP(const Ray &ray, bool testAlphaTexture) const {
     else if (det > 0 && (tScaled <= 0 || tScaled > ray.tMax * det))
         return false;
 
-    // Compute barycentric coordinates and $t$ value for triangle intersection
+    // Compute barycentric coordinates and $t$ value for triangle intersection / 计算重心坐标和t值
     Float invDet = 1 / det;
     Float b0 = e0 * invDet;
     Float b1 = e1 * invDet;
@@ -529,7 +569,7 @@ bool Triangle::IntersectP(const Ray &ray, bool testAlphaTexture) const {
 
     // Test shadow ray intersection against alpha texture, if present
     if (testAlphaTexture && (mesh->alphaMask || mesh->shadowAlphaMask)) {
-        // Compute triangle partial derivatives
+        // Compute triangle partial derivatives / 计算三角形偏导数(dpdu, dpdv)
         Vector3f dpdu, dpdv;
         Point2f uv[3];
         GetUVs(uv);
@@ -571,6 +611,9 @@ bool Triangle::IntersectP(const Ray &ray, bool testAlphaTexture) const {
     return true;
 }
 
+/**
+ * @brief 计算三角形面积(通过叉积)
+ */
 Float Triangle::Area() const {
     // Get triangle vertices in _p0_, _p1_, and _p2_
     const Point3f &p0 = mesh->p[v[0]];
@@ -579,6 +622,10 @@ Float Triangle::Area() const {
     return 0.5 * Cross(p1 - p0, p2 - p0).Length();
 }
 
+/**
+ * @brief 在三角形表面均匀采样一个点
+ * 使用UniformSampleTriangle生成均匀分布在三角形上的点
+ */
 Interaction Triangle::Sample(const Point2f &u, Float *pdf) const {
     Point2f b = UniformSampleTriangle(u);
     // Get triangle vertices in _p0_, _p1_, and _p2_
@@ -606,6 +653,10 @@ Interaction Triangle::Sample(const Point2f &u, Float *pdf) const {
     return it;
 }
 
+/**
+ * @brief 计算三角形相对于某点的立体角
+ * 使用Girard球面三角形面积定理计算
+ */
 Float Triangle::SolidAngle(const Point3f &p, int nSamples) const {
     // Project the vertices into the unit sphere around p.
     std::array<Vector3f, 3> pSphere = {
@@ -644,6 +695,10 @@ Float Triangle::SolidAngle(const Point3f &p, int nSamples) const {
         std::acos(Clamp(Dot(cross20, -cross01), -1, 1)) - Pi);
 }
 
+/**
+ * @brief 创建三角形网格形状的工厂函数
+ * 从参数集中读取顶点、索引、UV、法线、切线等数据
+ */
 std::vector<std::shared_ptr<Shape>> CreateTriangleMeshShape(
     const Transform *o2w, const Transform *w2o, bool reverseOrientation,
     const ParamSet &params,

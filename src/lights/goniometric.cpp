@@ -32,6 +32,7 @@
 
 
 // lights/goniometric.cpp*
+// GonioPhotometricLight实现：测角光度学光源，通过IES光分布纹理控制不同方向的光强分布
 #include "lights/goniometric.h"
 #include "paramset.h"
 #include "sampling.h"
@@ -40,6 +41,7 @@
 namespace pbrt {
 
 // GonioPhotometricLight Method Definitions
+// Sample_Li：返回光源在参考点方向的辐射度，乘以IES光分布缩放因子
 Spectrum GonioPhotometricLight::Sample_Li(const Interaction &ref,
                                           const Point2f &u, Vector3f *wi,
                                           Float *pdf,
@@ -52,17 +54,20 @@ Spectrum GonioPhotometricLight::Sample_Li(const Interaction &ref,
     return I * Scale(-*wi) / DistanceSquared(pLight, ref.p);
 }
 
+// Power：计算测角光源的总功率
 Spectrum GonioPhotometricLight::Power() const {
     return 4 * Pi * I * Spectrum(mipmap ? mipmap->Lookup(Point2f(.5f, .5f), .5f)
                                         : RGBSpectrum(1.f),
                                  SpectrumType::Illuminant);
 }
 
+// Pdf_Li：测角光源PDF为0（DeltaPosition分布）
 Float GonioPhotometricLight::Pdf_Li(const Interaction &,
                                     const Vector3f &) const {
     return 0.f;
 }
 
+// Sample_Le：从测角光源发射光线，均匀采样球面方向
 Spectrum GonioPhotometricLight::Sample_Le(const Point2f &u1, const Point2f &u2,
                                           Float time, Ray *ray,
                                           Normal3f *nLight, Float *pdfPos,

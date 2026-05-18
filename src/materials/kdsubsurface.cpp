@@ -32,6 +32,8 @@
 
 
 // materials/kdsubsurface.cpp*
+// 文件描述: KdSubsurface材质的实现。从漫反射颜色和平均自由路径
+// 推导吸收和散射系数，创建介电质BSDF和次表面散射BSSRDF。
 #include "materials/kdsubsurface.h"
 #include "textures/constant.h"
 #include "spectrum.h"
@@ -42,17 +44,18 @@
 namespace pbrt {
 
 // KdSubsurfaceMaterial Method Definitions
+// 计算散射函数: 建立介电质BSDF(反射+透射)和基于表格的BSSRDF
 void KdSubsurfaceMaterial::ComputeScatteringFunctions(
     SurfaceInteraction *si, MemoryArena &arena, TransportMode mode,
     bool allowMultipleLobes) const {
-    // Perform bump mapping with _bumpMap_, if present
+    // 如果存在凹凸贴图则执行凹凸映射
     if (bumpMap) Bump(bumpMap, si);
     Spectrum R = Kr->Evaluate(*si).Clamp();
     Spectrum T = Kt->Evaluate(*si).Clamp();
     Float urough = uRoughness->Evaluate(*si);
     Float vrough = vRoughness->Evaluate(*si);
 
-    // Initialize _bsdf_ for smooth or rough dielectric
+    // 初始化光滑或粗糙介电质的BSDF
     si->bsdf = ARENA_ALLOC(arena, BSDF)(*si, eta);
 
     if (R.IsBlack() && T.IsBlack()) return;
@@ -89,14 +92,17 @@ void KdSubsurfaceMaterial::ComputeScatteringFunctions(
         }
     }
 
+    // 从漫反射颜色和平均自由路径计算吸收和散射系数
     Spectrum mfree = scale * mfp->Evaluate(*si).Clamp();
     Spectrum kd = Kd->Evaluate(*si).Clamp();
     Spectrum sig_a, sig_s;
     SubsurfaceFromDiffuse(table, kd, mfree, &sig_a, &sig_s);
+    // 创建基于表格的BSSRDF用于次表面散射
     si->bssrdf = ARENA_ALLOC(arena, TabulatedBSSRDF)(*si, this, mode, eta,
                                                      sig_a, sig_s, table);
 }
 
+// 创建KdSubsurface材质对象的工厂函数
 KdSubsurfaceMaterial *CreateKdSubsurfaceMaterial(const TextureParams &mp) {
     Float Kd[3] = {.5, .5, .5};
     std::shared_ptr<Texture<Spectrum>> kd =

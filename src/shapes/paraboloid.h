@@ -39,14 +39,22 @@
 #define PBRT_SHAPES_PARABOLOID_H
 
 // shapes/paraboloid.h*
+/**
+ * @file paraboloid.h
+ * @brief 抛物面(Paraboloid)几何体模块
+ *
+ * 定义了沿Z轴旋转的抛物面几何体。
+ * 抛物面方程: z = (x^2 + y^2) / (radius^2/zMax)
+ * 通过半径、Z范围和最大角度来定义。
+ */
 #include "shape.h"
 
 namespace pbrt {
 
-// Paraboloid Declarations
+// Paraboloid Declarations / 抛物面声明
 class Paraboloid : public Shape {
   public:
-    // Paraboloid Public Methods
+    // Paraboloid Public Methods / 抛物面公有方法
     Paraboloid(const Transform *o2w, const Transform *w2o,
                bool reverseOrientation, Float radius, Float z0, Float z1,
                Float phiMax);
@@ -58,10 +66,15 @@ class Paraboloid : public Shape {
     Interaction Sample(const Point2f &u, Float *pdf) const;
 
   protected:
-    // Paraboloid Private Data
-    const Float radius, zMin, zMax, phiMax;
+    // Paraboloid Private Data / 抛物面私有数据
+    const Float radius;   /**< 抛物面最大半径 */
+    const Float zMin, zMax; /**< Z轴范围 */
+    const Float phiMax;   /**< 最大角度范围(弧度) */
 };
 
+/**
+ * @brief 创建抛物面形状的工厂函数
+ */
 std::shared_ptr<Paraboloid> CreateParaboloidShape(const Transform *o2w,
                                                   const Transform *w2o,
                                                   bool reverseOrientation,

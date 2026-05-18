@@ -39,6 +39,7 @@
 #define PBRT_CORE_IMAGEIO_H
 
 // core/imageio.h*
+// 图像IO: 提供图像读写功能，支持EXR和常规图像格式的加载与保存
 #include "pbrt.h"
 #include "geometry.h"
 #include <cctype>
@@ -46,12 +47,15 @@
 namespace pbrt {
 
 // ImageIO Declarations
+// ReadImage: 从文件读取图像，返回RGB光谱数组和分辨率
 std::unique_ptr<RGBSpectrum[]> ReadImage(const std::string &name,
                                          Point2i *resolution);
+// ReadImageEXR: 读取OpenEXR格式图像，支持数据窗口和显示窗口参数
 RGBSpectrum *ReadImageEXR(const std::string &name, int *width,
                           int *height, Bounds2i *dataWindow = nullptr,
                           Bounds2i *displayWindow = nullptr);
 
+// WriteImage: 将RGB浮点数据写入图像文件
 void WriteImage(const std::string &name, const Float *rgb,
                 const Bounds2i &outputBounds, const Point2i &totalResolution);
 

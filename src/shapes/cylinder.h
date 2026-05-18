@@ -39,14 +39,21 @@
 #define PBRT_SHAPES_CYLINDER_H
 
 // shapes/cylinder.h*
+/**
+ * @file cylinder.h
+ * @brief 圆柱体(Cylinder)几何体模块
+ *
+ * 定义了沿Z轴延伸的圆柱体几何体，通过半径(radius)、Z范围(zMin, zMax)和
+ * 最大角度(phiMax)来定义，支持裁剪参数创建部分圆柱。
+ */
 #include "shape.h"
 
 namespace pbrt {
 
-// Cylinder Declarations
+// Cylinder Declarations / 圆柱体声明
 class Cylinder : public Shape {
   public:
-    // Cylinder Public Methods
+    // Cylinder Public Methods / 圆柱体公有方法
     Cylinder(const Transform *ObjectToWorld, const Transform *WorldToObject,
              bool reverseOrientation, Float radius, Float zMin, Float zMax,
              Float phiMax)
@@ -63,10 +70,15 @@ class Cylinder : public Shape {
     Interaction Sample(const Point2f &u, Float *pdf) const;
 
   protected:
-    // Cylinder Private Data
-    const Float radius, zMin, zMax, phiMax;
+    // Cylinder Private Data / 圆柱体私有数据
+    const Float radius;  /**< 圆柱体半径 */
+    const Float zMin, zMax; /**< Z轴范围 */
+    const Float phiMax;  /**< 最大角度范围(弧度) */
 };
 
+/**
+ * @brief 创建圆柱体形状的工厂函数
+ */
 std::shared_ptr<Cylinder> CreateCylinderShape(const Transform *o2w,
                                               const Transform *w2o,
                                               bool reverseOrientation,

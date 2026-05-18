@@ -39,6 +39,8 @@
 #define PBRT_CORE_MIPMAP_H
 
 // core/mipmap.h*
+// MIPMap: Mipmap纹理映射，提供多级渐远纹理，支持三线性滤波和EWA(椭圆加权平均)滤波，
+// 用于高质量的各向异性纹理过滤
 #include "pbrt.h"
 #include "spectrum.h"
 #include "texture.h"
@@ -52,28 +54,33 @@ STAT_COUNTER("Texture/Trilinear lookups", nTrilerpLookups);
 STAT_MEMORY_COUNTER("Memory/Texture MIP maps", mipMapMemory);
 
 // MIPMap Helper Declarations
+// ImageWrap: 纹理寻址模式，决定超出[0,1]范围时的采样行为
 enum class ImageWrap { Repeat, Black, Clamp };
+// ResampleWeight: 重采样权重结构，存储滤波窗口中的起始纹素和插值权重
 struct ResampleWeight {
     int firstTexel;
     Float weight[4];
 };
 
 // MIPMap Declarations
+// MIPMap: 多级渐远纹理图，提供三线性和EWA各向异性滤波
 template <typename T>
 class MIPMap {
   public:
     // MIPMap Public Methods
+    // 构造函数：从图像数据构建MIPMap金字塔，可选三线性或EWA滤波
     MIPMap(const Point2i &resolution, const T *data, bool doTri = false,
            Float maxAniso = 8.f, ImageWrap wrapMode = ImageWrap::Repeat);
-    int Width() const { return resolution[0]; }
-    int Height() const { return resolution[1]; }
-    int Levels() const { return pyramid.size(); }
-    const T &Texel(int level, int s, int t) const;
-    T Lookup(const Point2f &st, Float width = 0.f) const;
-    T Lookup(const Point2f &st, Vector2f dstdx, Vector2f dstdy) const;
+    int Width() const { return resolution[0]; }         // 获取原始纹理宽度
+    int Height() const { return resolution[1]; }        // 获取原始纹理高度
+    int Levels() const { return pyramid.size(); }       // 获取MIP层级数
+    const T &Texel(int level, int s, int t) const;       // 获取指定层级的纹素
+    T Lookup(const Point2f &st, Float width = 0.f) const;  // 三线性滤波查找
+    T Lookup(const Point2f &st, Vector2f dstdx, Vector2f dstdy) const;  // EWA滤波查找
 
   private:
     // MIPMap Private Methods
+    // resampleWeights: 计算重采样滤波器权重，用于将非2的幂纹理重采样到2的幂尺寸
     std::unique_ptr<ResampleWeight[]> resampleWeights(int oldRes, int newRes) {
         CHECK_GE(newRes, oldRes);
         std::unique_ptr<ResampleWeight[]> wt(new ResampleWeight[newRes]);
@@ -99,17 +106,19 @@ class MIPMap {
     SampledSpectrum clamp(const SampledSpectrum &v) {
         return v.Clamp(0.f, Infinity);
     }
+    // triangle: 在指定MIP级别上执行三线性滤波中的三角形滤波步骤
     T triangle(int level, const Point2f &st) const;
+    // EWA: 椭圆加权平均滤波，提供各向异性纹理过滤
     T EWA(int level, Point2f st, Vector2f dst0, Vector2f dst1) const;
 
     // MIPMap Private Data
-    const bool doTrilinear;
-    const Float maxAnisotropy;
-    const ImageWrap wrapMode;
-    Point2i resolution;
-    std::vector<std::unique_ptr<BlockedArray<T>>> pyramid;
-    static PBRT_CONSTEXPR int WeightLUTSize = 128;
-    static Float weightLut[WeightLUTSize];
+    const bool doTrilinear;              // 是否使用三线性滤波
+    const Float maxAnisotropy;           // 最大各向异性比率
+    const ImageWrap wrapMode;            // 纹理寻址模式
+    Point2i resolution;                  // 最精细级别的分辨率
+    std::vector<std::unique_ptr<BlockedArray<T>>> pyramid;  // MIP金字塔各层级数据
+    static PBRT_CONSTEXPR int WeightLUTSize = 128;          // EWA滤波权重查找表大小
+    static Float weightLut[WeightLUTSize];                   // EWA滤波权重查找表
 };
 
 // MIPMap Method Definitions
@@ -185,12 +194,13 @@ MIPMap<T>::MIPMap(const Point2i &res, const T *img, bool doTrilinear,
     int nLevels = 1 + Log2Int(std::max(resolution[0], resolution[1]));
     pyramid.resize(nLevels);
 
-    // Initialize most detailed level of MIPMap
+    // 初始化MIPMap最精细级别（第0层）
     pyramid[0].reset(
         new BlockedArray<T>(resolution[0], resolution[1],
                             resampledImage ? resampledImage.get() : img));
     for (int i = 1; i < nLevels; ++i) {
         // Initialize $i$th MIPMap level from $i-1$st level
+        // 从第i-1层降采样构建第i层（每步缩小一半）
         int sRes = std::max(1, pyramid[i - 1]->uSize() / 2);
         int tRes = std::max(1, pyramid[i - 1]->vSize() / 2);
         pyramid[i].reset(new BlockedArray<T>(sRes, tRes));
@@ -243,12 +253,13 @@ const T &MIPMap<T>::Texel(int level, int s, int t) const {
 
 template <typename T>
 T MIPMap<T>::Lookup(const Point2f &st, Float width) const {
+    // 三线性滤波查找：根据滤波宽度选择MIP级别并插值
     ++nTrilerpLookups;
     ProfilePhase p(Prof::TexFiltTrilerp);
     // Compute MIPMap level for trilinear filtering
     Float level = Levels() - 1 + Log2(std::max(width, (Float)1e-8));
 
-    // Perform trilinear interpolation at appropriate MIPMap level
+    // 在合适的MIP级别上执行三线性插值
     if (level < 0)
         return triangle(0, st);
     else if (level >= Levels() - 1)
@@ -262,6 +273,7 @@ T MIPMap<T>::Lookup(const Point2f &st, Float width) const {
 
 template <typename T>
 T MIPMap<T>::triangle(int level, const Point2f &st) const {
+    // 双线性插值：在指定MIP级别上对纹理坐标进行双线性采样
     level = Clamp(level, 0, Levels() - 1);
     Float s = st[0] * pyramid[level]->uSize() - 0.5f;
     Float t = st[1] * pyramid[level]->vSize() - 0.5f;
@@ -275,6 +287,7 @@ T MIPMap<T>::triangle(int level, const Point2f &st) const {
 
 template <typename T>
 T MIPMap<T>::Lookup(const Point2f &st, Vector2f dst0, Vector2f dst1) const {
+    // EWA/三线性滤波查找：使用像素导数信息进行各向异性滤波
     if (doTrilinear) {
         Float width = std::max(std::max(std::abs(dst0[0]), std::abs(dst0[1])),
                                std::max(std::abs(dst1[0]), std::abs(dst1[1])));
@@ -283,6 +296,7 @@ T MIPMap<T>::Lookup(const Point2f &st, Vector2f dst0, Vector2f dst1) const {
     ++nEWALookups;
     ProfilePhase p(Prof::TexFiltEWA);
     // Compute ellipse minor and major axes
+    // 计算椭圆的长轴和短轴，用于各向异性滤波
     if (dst0.LengthSquared() < dst1.LengthSquared()) std::swap(dst0, dst1);
     Float majorLength = dst0.Length();
     Float minorLength = dst1.Length();
@@ -304,6 +318,7 @@ T MIPMap<T>::Lookup(const Point2f &st, Vector2f dst0, Vector2f dst1) const {
 
 template <typename T>
 T MIPMap<T>::EWA(int level, Point2f st, Vector2f dst0, Vector2f dst1) const {
+    // EWA滤波：根据椭圆覆盖区域对纹理像素进行加权平均，提供高质量各向异性过滤
     if (level >= Levels()) return Texel(Levels() - 1, 0, 0);
     // Convert EWA coordinates to appropriate scale for level
     st[0] = st[0] * pyramid[level]->uSize() - 0.5f;

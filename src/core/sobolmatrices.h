@@ -39,6 +39,9 @@
 #define PBRT_CORE_SOBOLMATRICES_H
 
 // core/sobolmatrices.h*
+// Sobol序列矩阵数据模块：包含用于生成Sobol准随机序列的
+// 预计算生成矩阵。Sobol序列是一种低差异序列(LDS)，
+// 在渲染中用于重要性采样和蒙特卡罗积分，能够减少方差。
 #include "pbrt.h"
 
 namespace pbrt {

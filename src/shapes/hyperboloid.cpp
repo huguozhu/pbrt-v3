@@ -32,6 +32,13 @@
 
 
 // shapes/hyperboloid.cpp*
+/**
+ * @file hyperboloid.cpp
+ * @brief 双曲面(Hyperboloid)几何体的实现
+ *
+ * 实现了单叶双曲面的光线求交、面积计算等功能。
+ * 双曲面由两个端点定义的旋转曲面，通过二次方程求解实现光线求交。
+ */
 #include "shapes/hyperboloid.h"
 #include "paramset.h"
 #include "efloat.h"
@@ -39,7 +46,11 @@
 
 namespace pbrt {
 
-// Hyperboloid Method Definitions
+// Hyperboloid Method Definitions / 双曲面方法实现
+/**
+ * @brief 双曲面构造函数
+ * 初始化双曲面的端点和旋转角度，计算隐式方程系数ah和ch
+ */
 Hyperboloid::Hyperboloid(const Transform *o2w, const Transform *w2o, bool ro,
                          const Point3f &point1, const Point3f &point2, Float tm)
     : Shape(o2w, w2o, ro) {
@@ -51,7 +62,7 @@ Hyperboloid::Hyperboloid(const Transform *o2w, const Transform *w2o, bool ro,
     rMax = std::max(radius1, radius2);
     zMin = std::min(p1.z, p2.z);
     zMax = std::max(p1.z, p2.z);
-    // Compute implicit function coefficients for hyperboloid
+    // Compute implicit function coefficients for hyperboloid / 计算双曲面隐式函数系数
     if (p2.z == 0.f) std::swap(p1, p2);
     Point3f pp = p1;
     Float xy1, xy2;
@@ -65,12 +76,18 @@ Hyperboloid::Hyperboloid(const Transform *o2w, const Transform *w2o, bool ro,
     } while (std::isinf(ah) || std::isnan(ah));
 }
 
+/**
+ * @brief 计算双曲面在对象空间的包围盒
+ */
 Bounds3f Hyperboloid::ObjectBound() const {
     Point3f p1 = Point3f(-rMax, -rMax, zMin);
     Point3f p2 = Point3f(rMax, rMax, zMax);
     return Bounds3f(p1, p2);
 }
 
+/**
+ * @brief 光线-双曲面求交(完整求交)
+ */
 bool Hyperboloid::Intersect(const Ray &r, Float *tHit,
                             SurfaceInteraction *isect,
                             bool testAlphaTexture) const {
@@ -172,6 +189,9 @@ bool Hyperboloid::Intersect(const Ray &r, Float *tHit,
     return true;
 }
 
+/**
+ * @brief 光线-双曲面求交测试(仅判断是否相交)
+ */
 bool Hyperboloid::IntersectP(const Ray &r, bool testAlphaTexture) const {
     ProfilePhase p(Prof::ShapeIntersectP);
     Float phi, v;
@@ -228,6 +248,9 @@ bool Hyperboloid::IntersectP(const Ray &r, bool testAlphaTexture) const {
 
 #define SQR(a) ((a) * (a))
 #define QUAD(a) ((SQR(a)) * (SQR(a)))
+/**
+ * @brief 计算双曲面表面积
+ */
 Float Hyperboloid::Area() const {
     return phiMax / 6.f *
            (2 * QUAD(p1.x) - 2 * p1.x * p1.x * p1.x * p2.x + 2 * QUAD(p2.x) +
@@ -244,11 +267,17 @@ Float Hyperboloid::Area() const {
 
 #undef SQR
 #undef QUAD
+/**
+ * @brief 在双曲面表面采样一个点(未实现)
+ */
 Interaction Hyperboloid::Sample(const Point2f &u, Float *pdf) const {
     LOG(FATAL) << "Hyperboloid::Sample not implemented.";
     return Interaction();
 }
 
+/**
+ * @brief 创建双曲面形状的工厂函数
+ */
 std::shared_ptr<Shape> CreateHyperboloidShape(const Transform *o2w,
                                               const Transform *w2o,
                                               bool reverseOrientation,

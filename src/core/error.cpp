@@ -31,6 +31,13 @@
  */
 
 // core/error.cpp*
+//
+// 此文件实现了 pbrt 的报错和警告功能。
+// 提供 Warning() 和 Error() 函数，支持格式化字符串输出，
+// 并包含行号/列号信息用于定位场景描述文件中的错误位置。
+// 使用互斥锁确保多线程环境下错误消息不会交错输出。
+//
+
 #include "error.h"
 #include "stringprint.h"
 #include "parallel.h"
@@ -45,6 +52,9 @@
 namespace pbrt {
 
 // Error Reporting Functions
+
+// 可变参数格式化辅助函数：将格式化字符串与 va_list 参数拼接为 std::string。
+// 内部使用 vsnprintf 两次调用来确定所需缓冲区大小。
 template <typename... Args>
 static std::string StringVaprintf(const std::string &fmt, va_list args) {
     // Figure out how much space we need to allocate; add an extra
@@ -59,6 +69,11 @@ static std::string StringVaprintf(const std::string &fmt, va_list args) {
     return str;
 }
 
+// 内部错误处理函数：构建完整的错误消息字符串并输出到 stderr。
+// loc: 场景文件位置（可为 nullptr），用于精确定位错误行。
+// format/args: 格式化字符串和参数。
+// errorType: 错误类型前缀（如 "Warning" 或 "Error"）。
+// 使用静态变量去重，避免相同错误消息重复输出。
 static void processError(Loc *loc, const char *format, va_list args,
                          const char *errorType) {
     // Build up an entire formatted error string and print it all at once;
@@ -86,6 +101,8 @@ static void processError(Loc *loc, const char *format, va_list args,
     }
 }
 
+// 输出警告消息。在安静模式（quiet）下不输出。
+// 使用 processError 构建消息，错误类型为 "Warning"。
 void Warning(const char *format, ...) {
     if (PbrtOptions.quiet) return;
     va_list args;
@@ -94,6 +111,7 @@ void Warning(const char *format, ...) {
     va_end(args);
 }
 
+// 输出错误消息。与 Warning 类似，但错误类型为 "Error"。
 void Error(const char *format, ...) {
     va_list args;
     va_start(args, format);

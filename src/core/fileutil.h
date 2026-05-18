@@ -39,6 +39,7 @@
 #define PBRT_CORE_FILEUTIL_H
 
 // core/fileutil.h*
+// 文件工具: 提供平台无关的文件路径操作函数，包括路径解析、目录提取、扩展名检查等
 #include "pbrt.h"
 #include <string>
 #include <cctype>
@@ -47,12 +48,14 @@
 namespace pbrt {
 
 // Platform independent filename-handling functions.
-bool IsAbsolutePath(const std::string &filename);
-std::string AbsolutePath(const std::string &filename);
-std::string ResolveFilename(const std::string &filename);
-std::string DirectoryContaining(const std::string &filename);
-void SetSearchDirectory(const std::string &dirname);
+// 平台无关的文件名处理函数
+bool IsAbsolutePath(const std::string &filename);       // 判断是否为绝对路径
+std::string AbsolutePath(const std::string &filename);  // 获取绝对路径
+std::string ResolveFilename(const std::string &filename);  // 解析文件名
+std::string DirectoryContaining(const std::string &filename);  // 获取文件所在目录
+void SetSearchDirectory(const std::string &dirname);  // 设置搜索目录
 
+// HasExtension: 检查文件名是否具有指定扩展名（大小写不敏感）
 inline bool HasExtension(const std::string &value, const std::string &ending) {
     if (ending.size() > value.size()) return false;
     return std::equal(

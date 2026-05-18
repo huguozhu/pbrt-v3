@@ -32,6 +32,12 @@
 
 
 // core/sobolmatrices.cpp*
+// 本文件包含Sobol'序列的生成矩阵数据。
+// Sobol'序列是一种低差异序列，用于准蒙特卡洛积分。
+// 这些矩阵基于S. Joe和F. Y. Kuo的研究成果，
+// 用于生成高质量的Sobol'序列点，在图形学中广泛应用于
+// 重要性采样、路径追踪等需要低差异采样的场景。
+// 数据源自Joe和Kuo发表的Sobol'序列方向数表格。
 // Copyright (c) 2012 Leonhard Gruenschloss (leonhard@gruenschloss.org)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy

@@ -32,6 +32,14 @@
 
 
 // core/medium.cpp*
+//
+// 本模块定义了参与介质的相关功能，包括：
+// - 测量得到的次表面散射参数表（Jensen 2001 和 Narasimhan 2006）
+// - 相位函数（Henyey-Greenstein 模型）的采样和求值
+// - 介质散射属性查询接口
+// MeasuredSS 结构体及其表格提供了多种真实世界材质的
+// 约化散射系数 sigma_prime_s 和吸收系数 sigma_a。
+//
 #include "medium.h"
 #include "memory.h"
 #include "sampler.h"
@@ -178,6 +186,13 @@ static MeasuredSS SubsurfaceParameterTable[] = {
 // Media Definitions
 PhaseFunction::~PhaseFunction() { }
 
+// GetMediumScatteringProperties: 根据材质名称查询次表面散射参数
+// 从 SubsurfaceParameterTable 中查找匹配的材质，返回其吸收系数
+// 和约化散射系数。用于次表面散射渲染。
+// name - 材质名称，如 "Apple", "Skin1", "Marble" 等
+// sigma_a - 输出参数，吸收系数
+// sigma_prime_s - 输出参数，约化散射系数
+// 返回值：找到匹配材质返回 true，否则返回 false
 bool GetMediumScatteringProperties(const std::string &name, Spectrum *sigma_a,
                                    Spectrum *sigma_prime_s) {
     for (MeasuredSS &mss : SubsurfaceParameterTable) {
@@ -191,10 +206,18 @@ bool GetMediumScatteringProperties(const std::string &name, Spectrum *sigma_a,
 }
 
 // HenyeyGreenstein Method Definitions
+
+// HenyeyGreenstein::Sample_p: 根据 Henyey-Greenstein 相位函数采样出射方向
+// wo - 入射方向
+// wi - 输出参数，采样的出射方向
+// u - [0,1)^2 均匀随机样本
+// 返回值：采样方向对应的相位函数值
+// 使用 g 参数控制各向异性：g>0 前向散射，g<0 后向散射，g=0 各向同性
 Float HenyeyGreenstein::Sample_p(const Vector3f &wo, Vector3f *wi,
                                  const Point2f &u) const {
     ProfilePhase _(Prof::PhaseFuncSampling);
     // Compute $\cos \theta$ for Henyey--Greenstein sample
+    // 根据 HG 相位函数采样 cos(theta)，g 接近 0 时退化为均匀采样
     Float cosTheta;
     if (std::abs(g) < 1e-3)
         cosTheta = 1 - 2 * u[0];
@@ -204,6 +227,7 @@ Float HenyeyGreenstein::Sample_p(const Vector3f &wo, Vector3f *wi,
     }
 
     // Compute direction _wi_ for Henyey--Greenstein sample
+    // 计算完整的出射方向 wi（包含方位角 phi）
     Float sinTheta = std::sqrt(std::max((Float)0, 1 - cosTheta * cosTheta));
     Float phi = 2 * Pi * u[1];
     Vector3f v1, v2;
@@ -212,6 +236,10 @@ Float HenyeyGreenstein::Sample_p(const Vector3f &wo, Vector3f *wi,
     return PhaseHG(cosTheta, g);
 }
 
+// HenyeyGreenstein::p: 计算给定方向对的 HG 相位函数值
+// wo - 入射方向
+// wi - 出射方向
+// 返回值：HG 相位函数在 cos(theta) = Dot(wo, wi) 处的值
 Float HenyeyGreenstein::p(const Vector3f &wo, const Vector3f &wi) const {
     ProfilePhase _(Prof::PhaseFuncEvaluation);
     return PhaseHG(Dot(wo, wi), g);

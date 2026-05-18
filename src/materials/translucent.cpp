@@ -32,6 +32,7 @@
 
 
 // materials/translucent.cpp*
+// 文件描述: 半透明材质的实现。支持漫反射/透射和微表面高光反射/透射。
 #include "materials/translucent.h"
 #include "spectrum.h"
 #include "reflection.h"
@@ -42,10 +43,11 @@
 namespace pbrt {
 
 // TranslucentMaterial Method Definitions
+// 计算散射函数: 创建半透明材质的BSDF(漫反射+高光反射/透射)
 void TranslucentMaterial::ComputeScatteringFunctions(
     SurfaceInteraction *si, MemoryArena &arena, TransportMode mode,
     bool allowMultipleLobes) const {
-    // Perform bump mapping with _bumpMap_, if present
+    // 如果存在凹凸贴图则执行凹凸映射
     if (bumpMap) Bump(bumpMap, si);
     Float eta = 1.5f;
     si->bsdf = ARENA_ALLOC(arena, BSDF)(*si, eta);
@@ -54,6 +56,7 @@ void TranslucentMaterial::ComputeScatteringFunctions(
     Spectrum t = transmit->Evaluate(*si).Clamp();
     if (r.IsBlack() && t.IsBlack()) return;
 
+    // 创建漫反射分量: Lambertian反射和/或Lambertian透射
     Spectrum kd = Kd->Evaluate(*si).Clamp();
     if (!kd.IsBlack()) {
         if (!r.IsBlack())
@@ -61,6 +64,7 @@ void TranslucentMaterial::ComputeScatteringFunctions(
         if (!t.IsBlack())
             si->bsdf->Add(ARENA_ALLOC(arena, LambertianTransmission)(t * kd));
     }
+    // 创建高光分量: 微表面反射和/或微表面透射
     Spectrum ks = Ks->Evaluate(*si).Clamp();
     if (!ks.IsBlack() && (!r.IsBlack() || !t.IsBlack())) {
         Float rough = roughness->Evaluate(*si);
@@ -79,6 +83,7 @@ void TranslucentMaterial::ComputeScatteringFunctions(
     }
 }
 
+// 创建半透明材质对象的工厂函数
 TranslucentMaterial *CreateTranslucentMaterial(const TextureParams &mp) {
     std::shared_ptr<Texture<Spectrum>> Kd =
         mp.GetSpectrumTexture("Kd", Spectrum(0.25f));

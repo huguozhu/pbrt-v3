@@ -32,6 +32,13 @@
 
 
 // core/efloat.cpp*
+//
+// 此文件实现了扩展浮点数（EFloat）类的外部位定义。
+// EFloat 通过追踪浮点运算的误差边界来提供区间算术功能，
+// 在光线与几何体求交时用于确保数值精度和鲁棒性。
+// 实际的 EFloat 计算操作均为内联函数，定义在 efloat.h 中。
+//
+
 #include "efloat.h"
 
 namespace pbrt {

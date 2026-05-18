@@ -32,20 +32,33 @@
 
 
 // samplers/maxmin.cpp*
+/**
+ * @file maxmin.cpp
+ * @brief 最大化最小距离采样器的实现
+ *
+ * 使用最大化最小距离(MaxMin Distance)策略结合Van Der Corput序列
+ * 和Sobol' 2D序列生成高质量样本。
+ */
 #include "samplers/maxmin.h"
 #include "paramset.h"
 #include "stats.h"
 
 namespace pbrt {
 
-// MaxMinDistSampler Method Definitions
+// MaxMinDistSampler Method Definitions / Maximin距离采样器方法实现
+/**
+ * @brief 开始新像素的采样
+ *
+ * 使用样本生成矩阵(CMaxMinDist)生成第一组2D样本，
+ * 其余维度使用Van Der Corput序列和Sobol 2D序列填充。
+ */
 void MaxMinDistSampler::StartPixel(const Point2i &p) {
     ProfilePhase _(Prof::StartPixel);
     Float invSPP = (Float)1 / samplesPerPixel;
     for (int i = 0; i < samplesPerPixel; ++i)
         samples2D[0][i] = Point2f(i * invSPP, SampleGeneratorMatrix(CPixel, i));
     Shuffle(&samples2D[0][0], samplesPerPixel, 1, rng);
-    // Generate remaining samples for _MaxMinDistSampler_
+    // Generate remaining samples for _MaxMinDistSampler_ / 生成其余维度的样本
     for (size_t i = 0; i < samples1D.size(); ++i)
         VanDerCorput(1, samplesPerPixel, &samples1D[i][0], rng);
 
@@ -64,12 +77,18 @@ void MaxMinDistSampler::StartPixel(const Point2i &p) {
     PixelSampler::StartPixel(p);
 }
 
+/**
+ * @brief 克隆MaxMinDist采样器
+ */
 std::unique_ptr<Sampler> MaxMinDistSampler::Clone(int seed) {
     MaxMinDistSampler *mmds = new MaxMinDistSampler(*this);
     mmds->rng.SetSequence(seed);
     return std::unique_ptr<Sampler>(mmds);
 }
 
+/**
+ * @brief 创建MaxMinDist采样器的工厂函数
+ */
 MaxMinDistSampler *CreateMaxMinDistSampler(const ParamSet &params) {
     int nsamp = params.FindOneInt("pixelsamples", 16);
     int sd = params.FindOneInt("dimensions", 4);

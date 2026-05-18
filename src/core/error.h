@@ -39,6 +39,8 @@
 #define PBRT_CORE_ERROR_H
 
 // core/error.h*
+// 错误报告和诊断信息工具：提供Error、Warning、Info、LOG等宏，
+// 支持格式化字符串和可变参数，统一渲染器的输出接口
 #include "pbrt.h"
 
 namespace pbrt {

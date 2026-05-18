@@ -1,5 +1,7 @@
 //
 // cyhair2pbrt.cpp
+// 文件功能：将CyHair毛发文件转换为PBRT场景描述格式
+// 将头发顶点解释为Catmull-Rom样条点，然后转换为三次贝塞尔曲线点
 //
 // Convert CyHair files to PBRT.
 // Hair vertices are interpreted as Catmull-Rom spline points.
@@ -37,6 +39,7 @@ THE SOFTWARE.
 */
 
 // Simple Cyhair loader.
+// 简单的CyHair加载器
 
 #include <cassert>
 #include <cstdio>
@@ -50,6 +53,7 @@ THE SOFTWARE.
 
 namespace cyhair {
 
+// 三维向量类，用于CyHair数据处理
 class real3 {
  public:
   real3() : x(0.0f), y(0.0f), z(0.0f) {}
@@ -100,6 +104,7 @@ static void mul_matrix(real3 out[4], const float mat[4][4], const real3 pt[4]) {
   }
 }
 
+// Catmull-Rom到三次贝塞尔曲线的转换函数
 static void CamullRomToCubicBezier(real3 Q[4], const real3 *cps, int cps_size,
                                    int seg_idx) {
   size_t sz = static_cast<size_t>(cps_size);
@@ -132,6 +137,7 @@ static void CamullRomToCubicBezier(real3 Q[4], const real3 *cps, int cps_size,
   }
 }
 
+// CyHair文件头结构
 struct CyHairHeader {
   char magic[4];
   unsigned int num_strands;
@@ -144,6 +150,7 @@ struct CyHairHeader {
   char infomation[88];
 };
 
+// CyHair毛发数据类：加载和管理CyHair格式的毛发数据
 class CyHair {
  public:
   CyHair()
@@ -161,9 +168,11 @@ class CyHair {
   ~CyHair() {}
 
   /// Load CyHair data from a file.
+  /// 从文件加载CyHair数据
   bool Load(const char *filename);
 
   /// Convert to cubic bezier curves.
+  /// 转换为三次贝塞尔曲线
   /// 4(cubic) * 3(xyz) * num_curves = vertices.size()
   /// 4(cubic) * num_curves = radiuss.size()
   /// `max_strands` limits the number of strands to convert. -1 = convert all
@@ -201,6 +210,7 @@ class CyHair {
 
 
 
+// CyHair加载函数：读取并解析CyHair二进制文件格式
 bool CyHair::Load(const char *filename) {
   FILE *fp = fopen(filename, "rb");
   if (!fp) {
@@ -298,6 +308,7 @@ bool CyHair::Load(const char *filename) {
   }
 
   // Build strand offset table.
+  // 构建发丝偏移表
   strand_offsets_.resize(num_strands_);
   strand_offsets_[0] = 0;
   for (size_t i = 1; i < num_strands_; i++) {
@@ -309,6 +320,7 @@ bool CyHair::Load(const char *filename) {
   return true;
 }
 
+// 转换为三次贝塞尔曲线的实现
 bool CyHair::ToCubicBezierCurves(std::vector<float> *vertices,
                                  std::vector<float> *radiuss,
                                  const float vertex_scale[3],
@@ -332,6 +344,7 @@ bool CyHair::ToCubicBezierCurves(std::vector<float> *vertices,
             << std::endl;
 
   // Assume input points are CatmullRom spline.
+  // 假设输入的顶点是Catmull-Rom样条点
   for (size_t i = 0; i < static_cast<size_t>(num_strands); i++) {
     if ((i % 1000) == 0) {
       std::cout << i << " / " << num_strands_ << std::endl;
@@ -345,6 +358,7 @@ bool CyHair::ToCubicBezierCurves(std::vector<float> *vertices,
     std::vector<real3> segment_points;
     for (size_t k = 0; k < static_cast<size_t>(num_segments); k++) {
       // Zup -> Yup
+      // 坐标转换：从Z轴向上变为Y轴向上
       real3 p(points_[3 * (strand_offsets_[i] + k) + 0],
               points_[3 * (strand_offsets_[i] + k) + 2],
               points_[3 * (strand_offsets_[i] + k) + 1]);
@@ -403,6 +417,7 @@ bool CyHair::ToCubicBezierCurves(std::vector<float> *vertices,
 #include <algorithm>
 #include <vector>
 
+// 主函数：解析命令行参数，加载CyHair文件并输出PBRT格式的曲线描述
 int main(int argc, char *argv[]) {
     if (argc <= 2 || strcmp(argv[1], "--help") == 0 ||
         strcmp(argv[1], "-h") == 0) {
@@ -420,6 +435,7 @@ int main(int argc, char *argv[]) {
 
     int max_strands = -1;         // -1 = Convert all strands
     float user_thickness = 1.0f;  // -1 = Use thickness in CyHair file.
+    // 最大发丝数：-1表示转换所有发丝；用户自定义厚度
     if (argc > 3) {
         max_strands = atoi(argv[3]);
     }
@@ -447,6 +463,7 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
+    // 计算场景包围盒
     double bounds[2][3] = {{1e30, 1e30, 1e30}, {-1e30, -1e30, -1e30}};
     for (size_t i = 0; i < points.size() / 3; ++i) {
         const double thickness = static_cast<double>(radiuss[i]);
@@ -467,6 +484,7 @@ int main(int argc, char *argv[]) {
             bounds[0][0], bounds[0][1], bounds[0][2], bounds[1][0],
             bounds[1][1], bounds[1][2]);
 
+    // 输出PBRT格式的曲线几何体
     const size_t num_curves = radiuss.size() / 4;
     for (size_t i = 0; i < num_curves; i++) {
         fprintf(

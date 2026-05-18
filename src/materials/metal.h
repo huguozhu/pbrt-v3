@@ -39,6 +39,7 @@
 #define PBRT_MATERIALS_METAL_H
 
 // materials/metal.h*
+// 文件描述: 金属材质的头文件。使用微表面模型和菲涅耳导体反射来描述金属表面。
 #include "pbrt.h"
 #include "material.h"
 #include "spectrum.h"
@@ -46,6 +47,8 @@
 namespace pbrt {
 
 // MetalMaterial Declarations
+// 金属材质类，使用Trowbridge-Reitz微表面分布和导体菲涅耳反射模型。
+// 支持各向异性粗糙度和折射率(eta)、消光系数(k)的纹理控制。
 class MetalMaterial : public Material {
   public:
     // MetalMaterial Public Methods
@@ -56,6 +59,7 @@ class MetalMaterial : public Material {
                   const std::shared_ptr<Texture<Float>> &vrough,
                   const std::shared_ptr<Texture<Float>> &bump,
                   bool remapRoughness);
+    // 计算散射函数: 创建金属材质的微表面反射BSDF
     void ComputeScatteringFunctions(SurfaceInteraction *si, MemoryArena &arena,
                                     TransportMode mode,
                                     bool allowMultipleLobes) const;
@@ -68,6 +72,7 @@ class MetalMaterial : public Material {
     bool remapRoughness;
 };
 
+// 创建金属材质对象的工厂函数
 MetalMaterial *CreateMetalMaterial(const TextureParams &mp);
 
 }  // namespace pbrt

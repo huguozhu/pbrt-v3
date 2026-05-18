@@ -33,6 +33,8 @@
 #ifndef PBRT_CORE_LIGHTDISTRIB_H
 #define PBRT_CORE_LIGHTDISTRIB_H
 
+// core/lightdistrib.h*
+// 光源分布: 提供光源重要性采样的概率分布，支持均匀分布、功率分布和空间变化分布
 #include "pbrt.h"
 #include "geometry.h"
 #include "sampling.h"
@@ -44,21 +46,24 @@
 
 namespace pbrt {
 
-// LightDistribution defines a general interface for classes that provide
-// probability distributions for sampling light sources at a given point in
-// space.
+// LightDistribution 定义了一个通用接口，用于为空间中给定点提供光源采样的概率分布。
+// 光源采样分布接口：提供空间中某点处光源采样概率分布的通用接口
 class LightDistribution {
   public:
     virtual ~LightDistribution();
 
+    // Lookup: 返回空间中一点p处用于光源采样的概率分布
     // Given a point |p| in space, this method returns a (hopefully
     // effective) sampling distribution for light sources at that point.
     virtual const Distribution1D *Lookup(const Point3f &p) const = 0;
 };
 
+// CreateLightSampleDistribution: 根据名称创建相应的光源采样分布（均匀/功率/空间变化）
 std::unique_ptr<LightDistribution> CreateLightSampleDistribution(
     const std::string &name, const Scene &scene);
 
+// UniformLightDistribution: 最简单的光源分布实现，对所有光源返回均匀分布（忽略位置点p）。
+// 适用于简单场景，但光源较多时效率较低。
 // The simplest possible implementation of LightDistribution: this returns
 // a uniform distribution over all light sources, ignoring the provided
 // point. This approach works well for very simple scenes, but is quite
@@ -75,6 +80,8 @@ class UniformLightDistribution : public LightDistribution {
     std::unique_ptr<Distribution1D> distrib;
 };
 
+// PowerLightDistribution: 按光源功率分配采样概率（忽略位置p），功率越大的光源被采样的概率越高。
+// 适用于主要光照来自少数强光源的场景。
 // PowerLightDistribution returns a distribution with sampling probability
 // proportional to the total emitted power for each light. (It also ignores
 // the provided point |p|.)  This approach works well for scenes where
@@ -93,6 +100,8 @@ class PowerLightDistribution : public LightDistribution {
     std::unique_ptr<Distribution1D> distrib;
 };
 
+// SpatialLightDistribution: 空间变化的光源分布，根据光源对空间中不同区域的贡献调整采样概率。
+// 将场景划分为体素网格，为每个体素单独计算采样分布。
 // A spatially-varying light distribution that adjusts the probability of
 // sampling a light source based on an estimate of its contribution to a
 // region of space.  A fixed voxel grid is imposed over the scene bounds

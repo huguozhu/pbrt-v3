@@ -32,6 +32,7 @@
 
 
 // materials/matte.cpp*
+// 文件描述: 哑光(漫反射)材质的实现。支持Lambertian反射和Oren-Nayar粗糙漫反射。
 #include "materials/matte.h"
 #include "paramset.h"
 #include "reflection.h"
@@ -42,18 +43,20 @@
 namespace pbrt {
 
 // MatteMaterial Method Definitions
+// 计算散射函数: 根据sigma参数创建Lambertian或OrenNayar漫反射BSDF
 void MatteMaterial::ComputeScatteringFunctions(SurfaceInteraction *si,
                                                MemoryArena &arena,
                                                TransportMode mode,
                                                bool allowMultipleLobes) const {
-    // Perform bump mapping with _bumpMap_, if present
+    // 如果存在凹凸贴图则执行凹凸映射
     if (bumpMap) Bump(bumpMap, si);
 
-    // Evaluate textures for _MatteMaterial_ material and allocate BRDF
+    // 评估材质纹理参数并分配BRDF
     si->bsdf = ARENA_ALLOC(arena, BSDF)(*si);
     Spectrum r = Kd->Evaluate(*si).Clamp();
     Float sig = Clamp(sigma->Evaluate(*si), 0, 90);
     if (!r.IsBlack()) {
+        // sigma==0时使用Lambertian反射，否则使用OrenNayar粗糙漫反射
         if (sig == 0)
             si->bsdf->Add(ARENA_ALLOC(arena, LambertianReflection)(r));
         else
@@ -61,6 +64,7 @@ void MatteMaterial::ComputeScatteringFunctions(SurfaceInteraction *si,
     }
 }
 
+// 创建哑光材质对象的工厂函数
 MatteMaterial *CreateMatteMaterial(const TextureParams &mp) {
     std::shared_ptr<Texture<Spectrum>> Kd =
         mp.GetSpectrumTexture("Kd", Spectrum(0.5f));

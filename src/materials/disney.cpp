@@ -48,6 +48,8 @@ licensed under a slightly-modified Apache 2.0 license.
 */
 
 // materials/disney.cpp*
+// 文件描述: 迪士尼材质BSDF/BSSRDF的实现。基于Burley等人的迪士尼BRDF/BSDF模型，
+// 包含迪士尼漫反射、次表面散射、清漆、金属、头发光泽等多个BRDF lobe。
 #include "materials/disney.h"
 #include "bssrdf.h"
 #include "interaction.h"
@@ -60,15 +62,13 @@ licensed under a slightly-modified Apache 2.0 license.
 
 namespace pbrt {
 
+// 辅助函数: 计算平方
 inline Float sqr(Float x) { return x * x; }
 
 // https://seblagarde.wordpress.com/2013/04/29/memo-on-fresnel-equations/
 //
-// The Schlick Fresnel approximation is:
-//
-// R = R(0) + (1 - R(0)) (1 - cos theta)^5,
-//
-// where R(0) is the reflectance at normal indicence.
+// Schlick菲涅耳近似: R = R(0) + (1 - R(0)) (1 - cos theta)^5
+// 其中R(0)是法线入射时的反射率
 inline Float SchlickWeight(Float cosTheta) {
     Float m = Clamp(1 - cosTheta, 0, 1);
     return (m * m) * (m * m) * m;
@@ -82,12 +82,13 @@ inline Spectrum FrSchlick(const Spectrum &R0, Float cosTheta) {
     return Lerp(SchlickWeight(cosTheta), R0, Spectrum(1.));
 }
 
-// For a dielectric, R(0) = (eta - 1)^2 / (eta + 1)^2, assuming we're
-// coming from air..
+// 对于介电质，法线入射反射率R(0) = (eta-1)^2/(eta+1)^2(假设从空气入射)
 inline Float SchlickR0FromEta(Float eta) { return sqr(eta - 1) / sqr(eta + 1); }
 
 ///////////////////////////////////////////////////////////////////////////
-// DisneyDiffuse
+// DisneyDiffuse - 迪士尼漫反射BRDF
+// 基于Burley 2015论文，在漫反射中加入菲涅耳效应，
+// 使反射在掠射角时逐渐减弱。
 
 class DisneyDiffuse : public BxDF {
   public:
@@ -102,12 +103,12 @@ class DisneyDiffuse : public BxDF {
     Spectrum R;
 };
 
+// 评估迪士尼漫反射BRDF: 在法线入射时值为1，掠射角时降至0.5
 Spectrum DisneyDiffuse::f(const Vector3f &wo, const Vector3f &wi) const {
     Float Fo = SchlickWeight(AbsCosTheta(wo)),
           Fi = SchlickWeight(AbsCosTheta(wi));
 
-    // Diffuse fresnel - go from 1 at normal incidence to .5 at grazing.
-    // Burley 2015, eq (4).
+    // 漫反射菲涅耳: 法线入射时1，掠射时0.5，见Burley 2015公式(4)
     return R * InvPi * (1 - Fo / 2) * (1 - Fi / 2);
 }
 
@@ -118,8 +119,8 @@ std::string DisneyDiffuse::ToString() const {
 ///////////////////////////////////////////////////////////////////////////
 // DisneyFakeSS
 
-// "Fake" subsurface scattering lobe, based on the Hanrahan-Krueger BRDF
-// approximation of the BSSRDF.
+// "Fake"次表面散射lobe, 基于Hanrahan-Krueger BRDF对BSSRDF的近似
+// 用于薄表面情况下(thin=true)模拟次表面散射效果
 class DisneyFakeSS : public BxDF {
   public:
     DisneyFakeSS(const Spectrum &R, Float roughness)
@@ -136,13 +137,14 @@ class DisneyFakeSS : public BxDF {
     Float roughness;
 };
 
+// 评估"假"次表面散射: 通过粗糙度参数控制回反射的平坦程度
 Spectrum DisneyFakeSS::f(const Vector3f &wo, const Vector3f &wi) const {
     Vector3f wh = wi + wo;
     if (wh.x == 0 && wh.y == 0 && wh.z == 0) return Spectrum(0.);
     wh = Normalize(wh);
     Float cosThetaD = Dot(wi, wh);
 
-    // Fss90 used to "flatten" retroreflection based on roughness
+    // Fss90用于根据粗糙度"展平"回反射
     Float Fss90 = cosThetaD * cosThetaD * roughness;
     Float Fo = SchlickWeight(AbsCosTheta(wo)),
           Fi = SchlickWeight(AbsCosTheta(wi));
@@ -160,7 +162,8 @@ std::string DisneyFakeSS::ToString() const {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// DisneyRetro
+// DisneyRetro - 迪士尼回反射BRDF
+// 模拟表面微观结构导致的回反射(光沿入射方向返回)效应
 
 class DisneyRetro : public BxDF {
   public:
@@ -198,7 +201,8 @@ std::string DisneyRetro::ToString() const {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// DisneySheen
+// DisneySheen - 迪士尼光泽BRDF
+// 模拟织物等表面上的彩色光泽(绒毛)效果
 
 class DisneySheen : public BxDF {
   public:
@@ -227,7 +231,8 @@ std::string DisneySheen::ToString() const {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// DisneyClearcoat
+// DisneyClearcoat - 迪士尼清漆BRDF
+// 使用GTR1分布(比Trowbridge-Reitz更宽的尾部)和固定IOR=1.5的额外高光层
 
 class DisneyClearcoat : public BxDF {
   public:
@@ -245,27 +250,27 @@ class DisneyClearcoat : public BxDF {
     Float weight, gloss;
 };
 
+// GTR1分布: 具有比Trowbridge-Reitz更宽尾部的微表面法线分布
 inline Float GTR1(Float cosTheta, Float alpha) {
     Float alpha2 = alpha * alpha;
     return (alpha2 - 1) /
            (Pi * std::log(alpha2) * (1 + (alpha2 - 1) * cosTheta * cosTheta));
 }
 
-// Smith masking/shadowing term.
+// Smith几何遮挡/阴影函数(使用GGX模型)
 inline Float smithG_GGX(Float cosTheta, Float alpha) {
     Float alpha2 = alpha * alpha;
     Float cosTheta2 = cosTheta * cosTheta;
     return 1 / (cosTheta + sqrt(alpha2 + cosTheta2 - alpha2 * cosTheta2));
 }
 
+// 评估清漆BRDF: 使用GTR1分布、固定IOR=1.5的菲涅耳和alpha=0.25的几何项
 Spectrum DisneyClearcoat::f(const Vector3f &wo, const Vector3f &wi) const {
     Vector3f wh = wi + wo;
     if (wh.x == 0 && wh.y == 0 && wh.z == 0) return Spectrum(0.);
     wh = Normalize(wh);
 
-    // Clearcoat has ior = 1.5 hardcoded -> F0 = 0.04. It then uses the
-    // GTR1 distribution, which has even fatter tails than Trowbridge-Reitz
-    // (which is GTR2).
+    // 清漆硬编码IOR=1.5 -> F0=0.04。使用GTR1分布(尾部比Trowbridge-Reitz/GTR2更肥)
     Float Dr = GTR1(AbsCosTheta(wh), gloss);
     Float Fr = FrSchlick(.04, Dot(wo, wh));
     // The geometric term always based on alpha = 0.25.
@@ -319,10 +324,9 @@ std::string DisneyClearcoat::ToString() const {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// DisneyFresnel
-
-// Specialized Fresnel function used for the specular component, based on
-// a mixture between dielectric and the Schlick Fresnel approximation.
+// DisneyFresnel - 迪士尼菲涅耳函数
+// 高光分量的专用菲涅耳函数，在介电质菲涅耳和Schlick菲涅耳近似之间混合
+// 通过metallic参数控制混合比例
 class DisneyFresnel : public Fresnel {
   public:
     DisneyFresnel(const Spectrum &R0, Float metallic, Float eta)
@@ -342,9 +346,8 @@ class DisneyFresnel : public Fresnel {
 };
 
 ///////////////////////////////////////////////////////////////////////////
-// DisneyMicrofacetDistribution
-
-class DisneyMicrofacetDistribution : public TrowbridgeReitzDistribution {
+// DisneyMicrofacetDistribution - 迪士尼微表面分布
+// 继承Trowbridge-Reitz分布，使用可分离的Smith几何遮挡模型
 public:
     DisneyMicrofacetDistribution(Float alphax, Float alphay)
         : TrowbridgeReitzDistribution(alphax, alphay) {}
@@ -358,17 +361,14 @@ public:
 ///////////////////////////////////////////////////////////////////////////
 // DisneyBSSRDF
 
-// Implementation of the empirical BSSRDF described in "Extending the
-// Disney BRDF to a BSDF with integrated subsurface scattering" (Brent
-// Burley) and "Approximate Reflectance Profiles for Efficient Subsurface
-// Scattering (Christensen and Burley).
+// 经验BSSRDF实现，基于Burley的"将迪士尼BRDF扩展到集成次表面散射的BSDF"
+// 以及Christensen和Burley的"高效次表面散射的近似反射率剖面"
 class DisneyBSSRDF : public SeparableBSSRDF {
   public:
     DisneyBSSRDF(const Spectrum &R, const Spectrum &d,
                  const SurfaceInteraction &po, Float eta,
                  const Material *material, TransportMode mode)
-        // 0.2 factor comes from personal communication from Brent Burley
-        // and Matt Chiang.
+        // 0.2因子来自Brent Burley和Matt Chiang的个人通信
         : SeparableBSSRDF(po, eta, material, mode), R(R), d(0.2 * d) {}
 
     Spectrum S(const SurfaceInteraction &pi, const Vector3f &wi);
@@ -380,18 +380,11 @@ class DisneyBSSRDF : public SeparableBSSRDF {
     Spectrum R, d;
 };
 
-// We need to override BSSRDF::S() so that we can have access to the full
-// hit information in order to modulate based on surface normal
-// orientations..
+// 重写BSSRDF::S()以访问完整的击点信息，从而根据表面法线方向进行调制
 Spectrum DisneyBSSRDF::S(const SurfaceInteraction &pi, const Vector3f &wi) {
     ProfilePhase pp(Prof::BSSRDFEvaluation);
-    // Fade based on relative orientations of the two surface normals to
-    // better handle surface cavities. (Details via personal communication
-    // from Brent Burley; these details aren't published in the course
-    // notes.)
-    //
-    // TODO: test
-    // TODO: explain
+    // 根据两个表面法线的相对方向进行淡入淡出，以更好地处理表面凹陷
+    // (细节来自Brent Burley的个人通信，未在课程笔记中发布)
     Vector3f a = Normalize(pi.p - po.p);
     Float fade = 1;
     Vector3f n = Vector3f(po.shading.n);
@@ -408,17 +401,17 @@ Spectrum DisneyBSSRDF::S(const SurfaceInteraction &pi, const Vector3f &wi) {
     return fade * (1 - Fo / 2) * (1 - Fi / 2) * Sp(pi) / Pi;
 }
 
-// Diffusion profile from Burley 2015, eq (5).
+// 扩散剖面函数，来自Burley 2015公式(5): 双指数衰减
 Spectrum DisneyBSSRDF::Sr(Float r) const {
     ProfilePhase pp(Prof::BSSRDFEvaluation);
-    if (r < 1e-6f) r = 1e-6f;  // Avoid singularity at r == 0.
+    if (r < 1e-6f) r = 1e-6f;  // 避免在r==0处的奇异性
     return R * (Exp(-Spectrum(r) / d) + Exp(-Spectrum(r) / (3 * d))) /
            (8 * Pi * d * r);
 }
 
 Float DisneyBSSRDF::Sample_Sr(int ch, Float u) const {
-    // The good news is that diffusion profile implemented in Sr is
-    // normalized---integrating in polar coordinates, we have:
+    // Sr中实现的扩散剖面已归一化(极坐标积分=1)
+    // 使用MIS在两个指数项之间进行采样
     //
     // int_0^2pi int_0^Infinity Sr(r) r dr dphi == 1.
     //
@@ -448,21 +441,20 @@ Float DisneyBSSRDF::Sample_Sr(int ch, Float u) const {
     // final value as the first does, so therefore we'll take three samples
     // from that for every one sample we take from the first.
     if (u < .25f) {
-        // Sample the first exponential
+        // 从第一个指数项采样(占1/4)
         u = std::min<Float>(u * 4, OneMinusEpsilon);  // renormalize to [0,1)
         return d[ch] * std::log(1 / (1 - u));
     } else {
-        // Second exponenital
+        // 从第二个指数项采样(占3/4，权重更大)
         u = std::min<Float>((u - .25f) / .75f, OneMinusEpsilon);  // normalize to [0,1)
         return 3 * d[ch] * std::log(1 / (1 - u));
     }
 }
 
 Float DisneyBSSRDF::Pdf_Sr(int ch, Float r) const {
-    if (r < 1e-6f) r = 1e-6f;  // Avoid singularity at r == 0.
+    if (r < 1e-6f) r = 1e-6f;  // 避免在r==0处的奇异性
 
-    // Weight the two individual PDFs as per the sampling frequency in
-    // Sample_Sr().
+    // 按照Sample_Sr()中的采样频率加权两个PDF
     return (.25f * std::exp(-r / d[ch]) / (2 * Pi * d[ch] * r) +
             .75f * std::exp(-r / (3 * d[ch])) / (6 * Pi * d[ch] * r));
 }
@@ -471,17 +463,19 @@ Float DisneyBSSRDF::Pdf_Sr(int ch, Float r) const {
 // DisneyMaterial
 
 // DisneyMaterial Method Definitions
+// 计算散射函数: 整合所有迪士尼BSDF/BSSRDF组件
+// 包括漫反射、次表面散射、回反射、光泽、清漆、微表面高光和透射
 void DisneyMaterial::ComputeScatteringFunctions(SurfaceInteraction *si,
                                                 MemoryArena &arena,
                                                 TransportMode mode,
                                                 bool allowMultipleLobes) const {
-    // Perform bump mapping with _bumpMap_, if present
+    // 如果存在凹凸贴图则执行凹凸映射
     if (bumpMap) Bump(bumpMap, si);
 
-    // Evaluate textures for _DisneyMaterial_ material and allocate BRDF
+    // 评估迪士尼材质纹理参数并分配BRDF
     si->bsdf = ARENA_ALLOC(arena, BSDF)(*si);
 
-    // Diffuse
+    // 漫反射分量: 计算颜色和材质属性参数
     Spectrum c = color->Evaluate(*si).Clamp();
     Float metallicWeight = metallic->Evaluate(*si);
     Float e = eta->Evaluate(*si);
@@ -491,7 +485,7 @@ void DisneyMaterial::ComputeScatteringFunctions(SurfaceInteraction *si,
                2;  // 0: all diffuse is reflected -> 1, transmitted
     Float rough = roughness->Evaluate(*si);
     Float lum = c.y();
-    // normalize lum. to isolate hue+sat
+    // 归一化亮度以分离色调和饱和度
     Spectrum Ctint = lum > 0 ? (c / lum) : Spectrum(1.);
 
     Float sheenWeight = sheen->Evaluate(*si);
@@ -501,6 +495,7 @@ void DisneyMaterial::ComputeScatteringFunctions(SurfaceInteraction *si,
         Csheen = Lerp(stint, Spectrum(1.), Ctint);
     }
 
+    // 构建漫反射组件(包含薄表面和次表面散射分支)
     if (diffuseWeight > 0) {
         if (thin) {
             Float flat = flatness->Evaluate(*si);
@@ -526,25 +521,25 @@ void DisneyMaterial::ComputeScatteringFunctions(SurfaceInteraction *si,
             }
         }
 
-        // Retro-reflection.
+        // 回反射分量
         si->bsdf->Add(
             ARENA_ALLOC(arena, DisneyRetro)(diffuseWeight * c, rough));
 
-        // Sheen (if enabled)
+        // 光泽分量(如果启用)
         if (sheenWeight > 0)
             si->bsdf->Add(ARENA_ALLOC(arena, DisneySheen)(
                 diffuseWeight * sheenWeight * Csheen));
     }
 
-    // Create the microfacet distribution for metallic and/or specular
-    // transmission.
+    // 创建金属和/或镜面透射的微表面分布
+    // 支持各向异性: aspect控制椭圆率
     Float aspect = std::sqrt(1 - anisotropic->Evaluate(*si) * .9);
     Float ax = std::max(Float(.001), sqr(rough) / aspect);
     Float ay = std::max(Float(.001), sqr(rough) * aspect);
     MicrofacetDistribution *distrib =
         ARENA_ALLOC(arena, DisneyMicrofacetDistribution)(ax, ay);
 
-    // Specular is Trowbridge-Reitz with a modified Fresnel function.
+    // 高光反射: Trowbridge-Reitz分布 + 改进的迪士尼菲涅耳函数
     Float specTint = specularTint->Evaluate(*si);
     Spectrum Cspec0 =
         Lerp(metallicWeight,
@@ -554,18 +549,17 @@ void DisneyMaterial::ComputeScatteringFunctions(SurfaceInteraction *si,
     si->bsdf->Add(
         ARENA_ALLOC(arena, MicrofacetReflection)(Spectrum(1.), distrib, fresnel));
 
-    // Clearcoat
+    // 清漆层: 独立的GTR1高光层
     Float cc = clearcoat->Evaluate(*si);
     if (cc > 0) {
         si->bsdf->Add(ARENA_ALLOC(arena, DisneyClearcoat)(
             cc, Lerp(clearcoatGloss->Evaluate(*si), .1, .001)));
     }
 
-    // BTDF
+    // 透射分量(BTDF): 使用微表面透射模型处理镜面透射
     if (strans > 0) {
-        // Walter et al's model, with the provided transmissive term scaled
-        // by sqrt(color), so that after two refractions, we're back to the
-        // provided color.
+        // Walter等人模型，透射项使用sqrt(color)缩放，
+        // 使得经过两次折射后回到指定的颜色
         Spectrum T = strans * Sqrt(c);
         if (thin) {
             // Scale roughness based on IOR (Burley 2015, Figure 15).
@@ -581,11 +575,12 @@ void DisneyMaterial::ComputeScatteringFunctions(SurfaceInteraction *si,
                 T, distrib, 1., e, mode));
     }
     if (thin) {
-        // Lambertian, weighted by (1 - diffTrans)
+        // 薄表面: Lambertian透射，由diffTrans加权
         si->bsdf->Add(ARENA_ALLOC(arena, LambertianTransmission)(dt * c));
     }
 }
 
+// 创建迪士尼材质对象的工厂函数
 DisneyMaterial *CreateDisneyMaterial(const TextureParams &mp) {
     std::shared_ptr<Texture<Spectrum>> color =
         mp.GetSpectrumTexture("color", Spectrum(0.5f));

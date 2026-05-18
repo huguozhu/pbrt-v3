@@ -39,6 +39,8 @@
 #define PBRT_CORE_PARAMSET_H
 
 // core/paramset.h*
+// 参数集: 提供类型安全的参数存储和查找接口，用于解析pbrt场景文件中
+// 的各种参数（浮点、整型、布尔、向量、光谱等），支持纹理参数
 #include "pbrt.h"
 #include "fileutil.h"
 #include "geometry.h"
@@ -50,10 +52,12 @@
 namespace pbrt {
 
 // ParamSet Declarations
+// ParamSet: 存储场景参数的类型安全容器，支持各种数据类型的添加、查找和删除
 class ParamSet {
   public:
     // ParamSet Public Methods
     ParamSet() {}
+    // 添加各种类型的参数
     void AddFloat(const std::string &, std::unique_ptr<Float[]> v,
                   int nValues = 1);
     void AddInt(const std::string &, std::unique_ptr<int[]> v, int nValues);
@@ -81,6 +85,7 @@ class ParamSet {
                                  int nValues);
     void AddSampledSpectrum(const std::string &, std::unique_ptr<Float[]> v,
                             int nValues);
+    // 删除各种类型的参数
     bool EraseInt(const std::string &);
     bool EraseBool(const std::string &);
     bool EraseFloat(const std::string &);
@@ -115,6 +120,7 @@ class ParamSet {
     const Normal3f *FindNormal3f(const std::string &, int *nValues) const;
     const Spectrum *FindSpectrum(const std::string &, int *nValues) const;
     const std::string *FindString(const std::string &, int *nValues) const;
+    // 报告未使用的参数、清空参数集、格式化输出
     void ReportUnused() const;
     void Clear();
     std::string ToString() const;
@@ -139,6 +145,7 @@ class ParamSet {
     static std::map<std::string, Spectrum> cachedSpectra;
 };
 
+// ParamSetItem: 存储单个参数项的模板结构，包含名称、值和是否被查询过的标记
 template <typename T>
 struct ParamSetItem {
     // ParamSetItem Public Methods
@@ -146,10 +153,10 @@ struct ParamSetItem {
                  int nValues = 1);
 
     // ParamSetItem Data
-    const std::string name;
-    const std::unique_ptr<T[]> values;
-    const int nValues;
-    mutable bool lookedUp = false;
+    const std::string name;           // 参数名称
+    const std::unique_ptr<T[]> values; // 参数值数组
+    const int nValues;                // 值数量
+    mutable bool lookedUp = false;    // 是否已被查询
 };
 
 // ParamSetItem Methods
@@ -158,7 +165,7 @@ ParamSetItem<T>::ParamSetItem(const std::string &name, std::unique_ptr<T[]> v,
                               int nValues)
     : name(name), values(std::move(v)), nValues(nValues) {}
 
-// TextureParams Declarations
+// TextureParams: 纹理参数类，将几何参数和材质参数结合，并提供纹理查找功能
 class TextureParams {
   public:
     // TextureParams Public Methods
@@ -170,10 +177,12 @@ class TextureParams {
           spectrumTextures(sTex),
           geomParams(geomParams),
           materialParams(materialParams) {}
+    // 获取光谱纹理（带默认值/可为空）
     std::shared_ptr<Texture<Spectrum>> GetSpectrumTexture(
         const std::string &name, const Spectrum &def) const;
     std::shared_ptr<Texture<Spectrum>> GetSpectrumTextureOrNull(
         const std::string &name) const;
+    // 获取浮点纹理（带默认值/可为空）
     std::shared_ptr<Texture<Float>> GetFloatTexture(const std::string &name,
                                                     Float def) const;
     std::shared_ptr<Texture<Float>> GetFloatTextureOrNull(

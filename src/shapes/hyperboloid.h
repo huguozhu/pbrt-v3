@@ -39,14 +39,21 @@
 #define PBRT_SHAPES_HYPERBOLOID_H
 
 // shapes/hyperboloid.h*
+/**
+ * @file hyperboloid.h
+ * @brief 双曲面(Hyperboloid)几何体模块
+ *
+ * 定义了单叶双曲面(single-sheeted hyperboloid)几何体，
+ * 由两个端点(point1, point2)和旋转角度phiMax定义。
+ */
 #include "shape.h"
 
 namespace pbrt {
 
-// Hyperboloid Declarations
+// Hyperboloid Declarations / 双曲面声明
 class Hyperboloid : public Shape {
   public:
-    // Hyperboloid Public Methods
+    // Hyperboloid Public Methods / 双曲面公有方法
     Hyperboloid(const Transform *o2w, const Transform *w2o, bool ro,
                 const Point3f &point1, const Point3f &point2, Float tm);
     Bounds3f ObjectBound() const;
@@ -57,14 +64,17 @@ class Hyperboloid : public Shape {
     Interaction Sample(const Point2f &u, Float *pdf) const;
 
   protected:
-    // Hyperboloid Private Data
-    Point3f p1, p2;
-    Float zMin, zMax;
-    Float phiMax;
-    Float rMax;
-    Float ah, ch;
+    // Hyperboloid Private Data / 双曲面私有数据
+    Point3f p1, p2;    /**< 双曲面端点 */
+    Float zMin, zMax;  /**< Z轴范围 */
+    Float phiMax;      /**< 最大角度范围(弧度) */
+    Float rMax;        /**< 最大半径 */
+    Float ah, ch;      /**< 隐式方程系数 */
 };
 
+/**
+ * @brief 创建双曲面形状的工厂函数
+ */
 std::shared_ptr<Shape> CreateHyperboloidShape(const Transform *o2w,
                                               const Transform *w2o,
                                               bool reverseOrientation,

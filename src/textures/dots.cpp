@@ -32,11 +32,13 @@
 
 
 // textures/dots.cpp*
+// 文件功能：圆点纹理（DotsTexture）的创建函数实现
 #include "textures/dots.h"
 
 namespace pbrt {
 
 // DotsTexture Method Definitions
+// 创建浮点型圆点纹理
 DotsTexture<Float> *CreateDotsFloatTexture(const Transform &tex2world,
                                            const TextureParams &tp) {
     // Initialize 2D texture mapping _map_ from _tp_
@@ -69,6 +71,7 @@ DotsTexture<Float> *CreateDotsFloatTexture(const Transform &tex2world,
 DotsTexture<Spectrum> *CreateDotsSpectrumTexture(const Transform &tex2world,
                                                  const TextureParams &tp) {
     // Initialize 2D texture mapping _map_ from _tp_
+    // 创建光谱型圆点纹理
     std::unique_ptr<TextureMapping2D> map;
     std::string type = tp.FindString("mapping", "uv");
     if (type == "uv") {

@@ -32,6 +32,7 @@
 
 
 // materials/mirror.cpp*
+// 文件描述: 镜面材质的实现。创建完美镜面反射BSDF。
 #include "materials/mirror.h"
 #include "spectrum.h"
 #include "reflection.h"
@@ -42,19 +43,22 @@
 namespace pbrt {
 
 // MirrorMaterial Method Definitions
+// 计算散射函数: 创建完美镜面反射BSDF
 void MirrorMaterial::ComputeScatteringFunctions(SurfaceInteraction *si,
                                                 MemoryArena &arena,
                                                 TransportMode mode,
                                                 bool allowMultipleLobes) const {
-    // Perform bump mapping with _bumpMap_, if present
+    // 如果存在凹凸贴图则执行凹凸映射
     if (bumpMap) Bump(bumpMap, si);
     si->bsdf = ARENA_ALLOC(arena, BSDF)(*si);
     Spectrum R = Kr->Evaluate(*si).Clamp();
+    // 创建完美镜面反射(使用FresnelNoOp忽略菲涅耳效应)
     if (!R.IsBlack())
         si->bsdf->Add(ARENA_ALLOC(arena, SpecularReflection)(
             R, ARENA_ALLOC(arena, FresnelNoOp)()));
 }
 
+// 创建镜面材质对象的工厂函数
 MirrorMaterial *CreateMirrorMaterial(const TextureParams &mp) {
     std::shared_ptr<Texture<Spectrum>> Kr =
         mp.GetSpectrumTexture("Kr", Spectrum(0.9f));

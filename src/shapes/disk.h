@@ -39,14 +39,21 @@
 #define PBRT_SHAPES_DISK_H
 
 // shapes/disk.h*
+/**
+ * @file disk.h
+ * @brief 圆盘(Disk)几何体模块
+ *
+ * 定义了一个位于平面上的圆盘几何体，可指定内外半径创建圆环形状。
+ * 支持通过phiMax参数创建部分圆盘。
+ */
 #include "shape.h"
 
 namespace pbrt {
 
-// Disk Declarations
+// Disk Declarations / 圆盘声明
 class Disk : public Shape {
   public:
-    // Disk Public Methods
+    // Disk Public Methods / 圆盘公有方法
     Disk(const Transform *ObjectToWorld, const Transform *WorldToObject,
          bool reverseOrientation, Float height, Float radius, Float innerRadius,
          Float phiMax)
@@ -63,10 +70,16 @@ class Disk : public Shape {
     Interaction Sample(const Point2f &u, Float *pdf) const;
 
   private:
-    // Disk Private Data
-    const Float height, radius, innerRadius, phiMax;
+    // Disk Private Data / 圆盘私有数据
+    const Float height;       /**< 圆盘所在平面高度(Z值) */
+    const Float radius;       /**< 圆盘外半径 */
+    const Float innerRadius;  /**< 圆盘内半径(用于创建环形) */
+    const Float phiMax;       /**< 最大角度范围(弧度) */
 };
 
+/**
+ * @brief 创建圆盘形状的工厂函数
+ */
 std::shared_ptr<Disk> CreateDiskShape(const Transform *o2w,
                                       const Transform *w2o,
                                       bool reverseOrientation,

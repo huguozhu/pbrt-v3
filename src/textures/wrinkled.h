@@ -39,6 +39,7 @@
 #define PBRT_TEXTURES_WRINKLED_H
 
 // textures/wrinkled.h*
+// 模块功能：褶皱纹理（WrinkledTexture），使用湍流噪声（Turbulence）生成褶皱/皱纹效果
 #include "pbrt.h"
 #include "texture.h"
 #include "paramset.h"
@@ -46,6 +47,7 @@
 namespace pbrt {
 
 // WrinkledTexture Declarations
+// 褶皱纹理类声明：通过湍流噪声函数模拟表面褶皱效果
 template <typename T>
 class WrinkledTexture : public Texture<T> {
   public:

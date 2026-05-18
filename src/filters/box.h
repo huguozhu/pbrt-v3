@@ -39,6 +39,7 @@
 #define PBRT_FILTERS_BOX_H
 
 // filters/box.h*
+// BoxFilter: 盒状滤波器，在滤波器范围内所有像素权重相等，是最简单的图像重建滤波器
 #include "filter.h"
 
 namespace pbrt {
@@ -46,7 +47,9 @@ namespace pbrt {
 // Box Filter Declarations
 class BoxFilter : public Filter {
   public:
+    // BoxFilter构造函数，调用Filter基类初始化滤波器半径
     BoxFilter(const Vector2f &radius) : Filter(radius) {}
+    // Evaluate: 计算盒状滤波器在给定位置p处的权重值(恒为1)
     Float Evaluate(const Point2f &p) const;
 };
 

@@ -32,6 +32,7 @@
 
 
 // lights/projection.cpp*
+// ProjectionLight实现：投影光源，将纹理图像通过投影矩阵投射到场景中，类似投影仪效果
 #include "lights/projection.h"
 #include "sampling.h"
 #include "paramset.h"
@@ -42,6 +43,7 @@
 namespace pbrt {
 
 // ProjectionLight Method Definitions
+// ProjectionLight构造函数：加载投影纹理并初始化投影矩阵
 ProjectionLight::ProjectionLight(const Transform &LightToWorld,
                                  const MediumInterface &mediumInterface,
                                  const Spectrum &I, const std::string &texname,
@@ -73,6 +75,7 @@ ProjectionLight::ProjectionLight(const Transform &LightToWorld,
     cosTotalWidth = wCorner.z;
 }
 
+// Sample_Li：返回投影光源在参考点方向上的辐射度（含投影纹理调制）
 Spectrum ProjectionLight::Sample_Li(const Interaction &ref, const Point2f &u,
                                     Vector3f *wi, Float *pdf,
                                     VisibilityTester *vis) const {
@@ -84,6 +87,7 @@ Spectrum ProjectionLight::Sample_Li(const Interaction &ref, const Point2f &u,
     return I * Projection(-*wi) / DistanceSquared(pLight, ref.p);
 }
 
+// Projection：将方向向量投影到纹理空间并查询投影纹理值
 Spectrum ProjectionLight::Projection(const Vector3f &w) const {
     Vector3f wl = WorldToLight(w);
     // Discard directions behind projection light

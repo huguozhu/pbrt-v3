@@ -32,6 +32,13 @@
 
 
 // core/fileutil.cpp*
+//
+// 此文件实现了文件路径相关的工具函数。
+// 包括判断路径是否为绝对路径、获取绝对路径、解析文件名、
+// 获取文件所在目录以及设置搜索目录等功能。
+// 在 Windows 和 POSIX 系统下分别使用不同的实现。
+//
+
 #include "fileutil.h"
 #include <cstdlib>
 #include <climits>
@@ -44,12 +51,16 @@ namespace pbrt {
 static std::string searchDirectory;
 
 #ifdef PBRT_IS_WINDOWS
+// 判断文件名是否为绝对路径（Windows 版本）。
+// 以 '\'、'/' 开头或包含 ':'（如 "C:\"）均视为绝对路径。
 bool IsAbsolutePath(const std::string &filename) {
     if (filename.empty()) return false;
     return (filename[0] == '\\' || filename[0] == '/' ||
             filename.find(':') != std::string::npos);
 }
 
+// 将相对路径转换为绝对路径（Windows 版本）。
+// 使用 _fullpath 系统调用，失败时返回原文件名。
 std::string AbsolutePath(const std::string &filename) {
     char full[_MAX_PATH];
     if (_fullpath(full, filename.c_str(), _MAX_PATH))
@@ -58,6 +69,7 @@ std::string AbsolutePath(const std::string &filename) {
         return filename;
 }
 
+// 解析并补全文件名：如果是相对路径则在搜索目录前添加前缀（Windows 版本）。
 std::string ResolveFilename(const std::string &filename) {
     if (searchDirectory.empty() || filename.empty())
         return filename;
@@ -71,6 +83,8 @@ std::string ResolveFilename(const std::string &filename) {
         return searchDirectory + "\\" + filename;
 }
 
+// 返回文件所在目录路径（Windows 版本）。
+// 使用 _splitpath_s 和 _makepath_s 分割和重组路径组件。
 std::string DirectoryContaining(const std::string &filename) {
     // This code isn't tested but I believe it should work. Might need to add
     // some const_casts to make it compile though.
@@ -90,10 +104,12 @@ std::string DirectoryContaining(const std::string &filename) {
 
 #else
 
+// 判断文件名是否为绝对路径（POSIX 版本）。以 '/' 开头为绝对路径。
 bool IsAbsolutePath(const std::string &filename) {
     return (filename.size() > 0) && filename[0] == '/';
 }
 
+// 将相对路径转换为绝对路径（POSIX 版本）。使用 realpath 系统调用。
 std::string AbsolutePath(const std::string &filename) {
     char full[PATH_MAX];
     if (realpath(filename.c_str(), full))
@@ -102,6 +118,7 @@ std::string AbsolutePath(const std::string &filename) {
         return filename;
 }
 
+// 解析并补全文件名：如果是相对路径则在搜索目录前添加前缀（POSIX 版本）。
 std::string ResolveFilename(const std::string &filename) {
     if (searchDirectory.empty() || filename.empty())
         return filename;
@@ -113,6 +130,7 @@ std::string ResolveFilename(const std::string &filename) {
         return searchDirectory + "/" + filename;
 }
 
+// 返回文件所在目录路径（POSIX 版本）。使用 dirname() 系统函数。
 std::string DirectoryContaining(const std::string &filename) {
     char *t = strdup(filename.c_str());
     std::string result = dirname(t);
@@ -122,6 +140,7 @@ std::string DirectoryContaining(const std::string &filename) {
 
 #endif
 
+// 设置全局搜索目录，用于 ResolveFilename 补全相对路径。
 void SetSearchDirectory(const std::string &dirname) {
     searchDirectory = dirname;
 }

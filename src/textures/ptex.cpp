@@ -31,6 +31,7 @@
  */
 
 // textures/ptex.cpp*
+// 文件功能：Ptex纹理（PtexTexture）的完整实现，包括纹理缓存管理、Ptex文件加载和采样
 #include "textures/ptex.h"
 
 #include "error.h"
@@ -46,6 +47,7 @@ namespace {
 
 // Reference count for the cache. Note: we assume that PtexTextures aren't
 // being created/destroyed concurrently by multiple threads.
+// Ptex缓存引用计数：假设纹理不会在多线程中并发创建/销毁
 int nActiveTextures;
 Ptex::PtexCache *cache;
 
@@ -61,9 +63,11 @@ struct : public PtexErrorHandler {
 }  // anonymous namespace
 
 // PtexTexture Method Definitions
+// Ptex纹理构造函数：初始化Ptex缓存并验证纹理文件的有效性
 template <typename T>
 PtexTexture<T>::PtexTexture(const std::string &filename, Float gamma)
     : filename(filename), gamma(gamma) {
+    // 如果缓存未初始化，则创建Ptex缓存
     if (!cache) {
         CHECK_EQ(nActiveTextures, 0);
         int maxFiles = 100;
@@ -78,6 +82,7 @@ PtexTexture<T>::PtexTexture(const std::string &filename, Float gamma)
 
     // Issue an error if the texture doesn't exist or has an unsupported
     // number of channels.
+    // 检查纹理是否存在以及通道数是否被支持（仅支持1通道和3通道）
     valid = false;
     Ptex::String error;
     Ptex::PtexTexture *texture = cache->get(filename.c_str(), error);
@@ -95,6 +100,7 @@ PtexTexture<T>::PtexTexture(const std::string &filename, Float gamma)
     }
 }
 
+// Ptex纹理析构函数：当所有Ptex纹理都被销毁时，释放Ptex缓存
 template <typename T>
 PtexTexture<T>::~PtexTexture() {
     if (--nActiveTextures == 0) {
@@ -110,11 +116,13 @@ PtexTexture<T>::~PtexTexture() {
     }
 }
 
+// 辅助模板函数：将Ptex采样结果转换为pbrt中的数据类型（Float或Spectrum）
 template <typename T>
 inline T fromResult(int nc, float *result) {
     return T::unimplemented;
 }
 
+// Float类型的特化：单通道直接返回，三通道取平均值
 template <>
 inline Float fromResult<Float>(int nc, float *result) {
     if (nc == 1)
@@ -123,6 +131,7 @@ inline Float fromResult<Float>(int nc, float *result) {
         return (result[0] + result[1] + result[2]) / 3;
 }
 
+// Spectrum类型的特化：单通道作为灰度，三通道转换为RGB光谱
 template <>
 inline Spectrum fromResult<Spectrum>(int nc, float *result) {
     if (nc == 1)
@@ -134,6 +143,7 @@ inline Spectrum fromResult<Spectrum>(int nc, float *result) {
 }
 
 template <typename T>
+// Ptex纹理采样求值函数：使用Ptex过滤器采样纹理值，可选Gamma校正
 T PtexTexture<T>::Evaluate(const SurfaceInteraction &si) const {
     ProfilePhase _(Prof::TexFiltPtex);
 
@@ -144,6 +154,7 @@ T PtexTexture<T>::Evaluate(const SurfaceInteraction &si) const {
     Ptex::PtexTexture *texture = cache->get(filename.c_str(), error);
     CHECK(texture != nullptr);
     // TODO: make the filter an option?
+    // 使用B样条过滤器进行纹理采样
     Ptex::PtexFilter::Options opts(Ptex::PtexFilter::FilterType::f_bspline);
     Ptex::PtexFilter *filter = Ptex::PtexFilter::getFilter(texture, opts);
     int nc = texture->numChannels();
@@ -155,6 +166,7 @@ T PtexTexture<T>::Evaluate(const SurfaceInteraction &si) const {
     filter->release();
     texture->release();
 
+    // 应用Gamma校正（如果Gamma值不为1）
     if (gamma != 1)
         for (int i = 0; i < nc; ++i)
             if (result[i] >= 0 && result[i] <= 1)
@@ -164,6 +176,7 @@ T PtexTexture<T>::Evaluate(const SurfaceInteraction &si) const {
     return fromResult<T>(nc, result);
 }
 
+// 创建浮点型Ptex纹理
 PtexTexture<Float> *CreatePtexFloatTexture(const Transform &tex2world,
                                            const TextureParams &tp) {
     std::string filename = tp.FindFilename("filename");
@@ -171,6 +184,7 @@ PtexTexture<Float> *CreatePtexFloatTexture(const Transform &tex2world,
     return new PtexTexture<Float>(filename, gamma);
 }
 
+// 创建光谱型Ptex纹理
 PtexTexture<Spectrum> *CreatePtexSpectrumTexture(const Transform &tex2world,
                                                  const TextureParams &tp) {
     std::string filename = tp.FindFilename("filename");

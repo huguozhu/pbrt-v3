@@ -31,6 +31,8 @@
  */
 
 // lights/infinite.cpp*
+// InfiniteAreaLight实现：无限远环境光，使用环境贴图（HDR等矩形投影图）作为光照来源，
+// 从所有方向照亮场景，需要预计算重要性采样分布
 #include "lights/infinite.h"
 #include "imageio.h"
 #include "paramset.h"
@@ -40,6 +42,7 @@
 namespace pbrt {
 
 // InfiniteAreaLight Method Definitions
+// InfiniteAreaLight构造函数：加载环境贴图纹理并预计算重要性采样分布
 InfiniteAreaLight::InfiniteAreaLight(const Transform &LightToWorld,
                                      const Spectrum &L, int nSamples,
                                      const std::string &texmap)
@@ -83,18 +86,21 @@ InfiniteAreaLight::InfiniteAreaLight(const Transform &LightToWorld,
     distribution.reset(new Distribution2D(img.get(), width, height));
 }
 
+// Power：计算环境光的近似功率
 Spectrum InfiniteAreaLight::Power() const {
     return Pi * worldRadius * worldRadius *
            Spectrum(Lmap->Lookup(Point2f(.5f, .5f), .5f),
                     SpectrumType::Illuminant);
 }
 
+// Le：返回环境光沿给定方向射出的辐射度（用于未被遮挡的光线）
 Spectrum InfiniteAreaLight::Le(const RayDifferential &ray) const {
     Vector3f w = Normalize(WorldToLight(ray.d));
     Point2f st(SphericalPhi(w) * Inv2Pi, SphericalTheta(w) * InvPi);
     return Spectrum(Lmap->Lookup(st), SpectrumType::Illuminant);
 }
 
+// Sample_Li：根据重要性采样从环境贴图中采样一个光照方向，返回该方向的辐射度
 Spectrum InfiniteAreaLight::Sample_Li(const Interaction &ref, const Point2f &u,
                                       Vector3f *wi, Float *pdf,
                                       VisibilityTester *vis) const {
@@ -121,6 +127,7 @@ Spectrum InfiniteAreaLight::Sample_Li(const Interaction &ref, const Point2f &u,
     return Spectrum(Lmap->Lookup(uv), SpectrumType::Illuminant);
 }
 
+// Pdf_Li：计算沿给定方向采样环境光的概率密度
 Float InfiniteAreaLight::Pdf_Li(const Interaction &, const Vector3f &w) const {
     ProfilePhase _(Prof::LightPdf);
     Vector3f wi = WorldToLight(w);
@@ -131,6 +138,7 @@ Float InfiniteAreaLight::Pdf_Li(const Interaction &, const Vector3f &w) const {
            (2 * Pi * Pi * sinTheta);
 }
 
+// Sample_Le：从环境光发射一条光子，沿重要性采样方向从场景边界球出发
 Spectrum InfiniteAreaLight::Sample_Le(const Point2f &u1, const Point2f &u2,
                                       Float time, Ray *ray, Normal3f *nLight,
                                       Float *pdfPos, Float *pdfDir) const {

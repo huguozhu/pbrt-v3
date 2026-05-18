@@ -38,6 +38,11 @@
 #ifndef PBRT_CORE_STRINGPRINT_H
 #define PBRT_CORE_STRINGPRINT_H
 
+// core/stringprint.h*
+// 本文件提供了StringPrintf系列类型安全的格式化字符串工具。
+// StringPrintf是sprintf/snprintf的C++替代方案，返回std::string，
+// 对float使用%.9g、对double使用%.17g精度输出，确保浮点数可精确还原。
+// 通过递归模板参数展开实现对变参的类型安全处理。
 #include "pbrt.h"
 #include <stdio.h>
 #include <string>

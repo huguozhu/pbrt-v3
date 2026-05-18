@@ -39,6 +39,7 @@
 #define PBRT_TEXTURES_DOTS_H
 
 // textures/dots.h*
+// 模块功能：圆点纹理（DotsTexture），基于噪声函数在平面上生成随机分布的圆点图案
 #include "pbrt.h"
 #include "texture.h"
 #include "paramset.h"
@@ -46,6 +47,7 @@
 namespace pbrt {
 
 // DotsTexture Declarations
+// 圆点纹理类声明：使用噪声函数确定圆点位置，在圆点内部和外部返回不同的纹理值
 template <typename T>
 class DotsTexture : public Texture<T> {
   public:

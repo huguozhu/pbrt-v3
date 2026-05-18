@@ -32,16 +32,19 @@
 
 
 // filters/mitchell.cpp*
+// Mitchell-Netravali滤波器实现：使用可分离的分段三次多项式核函数
 #include "filters/mitchell.h"
 #include "paramset.h"
 
 namespace pbrt {
 
 // Mitchell Filter Method Definitions
+// Evaluate: 计算Mitchell滤波器在点p处的权重，通过对x和y方向独立滤波并相乘
 Float MitchellFilter::Evaluate(const Point2f &p) const {
     return Mitchell1D(p.x * invRadius.x) * Mitchell1D(p.y * invRadius.y);
 }
 
+// CreateMitchellFilter: 根据参数集创建Mitchell滤波器，读取B和C形状参数
 MitchellFilter *CreateMitchellFilter(const ParamSet &ps) {
     // Find common filter parameters
     Float xw = ps.FindOneFloat("xwidth", 2.f);

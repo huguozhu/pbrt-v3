@@ -39,15 +39,22 @@
 #define PBRT_SAMPLERS_MAXMIN_H
 
 // samplers/maxmin.h*
+/**
+ * @file maxmin.h
+ * @brief 最大化最小距离采样器(MaxMinDistSampler)模块
+ *
+ * 使用最大化最小距离(MaxMin Distance)策略生成像素样本。
+ * 样本点在像素区域内最大化彼此之间的距离，减少聚集效应。
+ */
 #include "sampler.h"
 #include "lowdiscrepancy.h"
 
 namespace pbrt {
 
-// MaxMinDistSampler Declarations
+// MaxMinDistSampler Declarations / 最大化最小距离采样器声明
 class MaxMinDistSampler : public PixelSampler {
   public:
-    // MaxMinDistSampler Public Methods
+    // MaxMinDistSampler Public Methods / 公有方法
     void StartPixel(const Point2i &);
     std::unique_ptr<Sampler> Clone(int seed);
     int RoundCount(int count) const { return RoundUpPow2(count); }
@@ -78,10 +85,13 @@ class MaxMinDistSampler : public PixelSampler {
     }
 
   private:
-    // MaxMinDistSampler Private Data
-    const uint32_t *CPixel;
+    // MaxMinDistSampler Private Data / 私有数据
+    const uint32_t *CPixel;  /**< 指向CMaxMinDist查找表的指针 */
 };
 
+/**
+ * @brief 创建MaxMinDist采样器的工厂函数
+ */
 MaxMinDistSampler *CreateMaxMinDistSampler(const ParamSet &params);
 
 }  // namespace pbrt

@@ -31,6 +31,7 @@
  */
 
 // lights/diffuse.cpp*
+// DiffuseAreaLight实现：漫反射面光源，从形状表面沿余弦加权半球方向发射光线
 #include "lights/diffuse.h"
 #include "paramset.h"
 #include "sampling.h"
@@ -40,6 +41,7 @@
 namespace pbrt {
 
 // DiffuseAreaLight Method Definitions
+// DiffuseAreaLight构造函数：初始化光源参数并检查非均匀缩放问题
 DiffuseAreaLight::DiffuseAreaLight(const Transform &LightToWorld,
                                    const MediumInterface &mediumInterface,
                                    const Spectrum &Lemit, int nSamples,
@@ -61,10 +63,12 @@ DiffuseAreaLight::DiffuseAreaLight(const Transform &LightToWorld,
             "Proceed at your own risk; your image may have errors.");
 }
 
+// Power：计算漫反射面光源的总功率（发光度 x 面积 x Pi，双面时加倍）
 Spectrum DiffuseAreaLight::Power() const {
     return (twoSided ? 2 : 1) * Lemit * area * Pi;
 }
 
+// Sample_Li：在光源上采样一点，返回该点对参考点的入射辐射度
 Spectrum DiffuseAreaLight::Sample_Li(const Interaction &ref, const Point2f &u,
                                      Vector3f *wi, Float *pdf,
                                      VisibilityTester *vis) const {
@@ -80,12 +84,14 @@ Spectrum DiffuseAreaLight::Sample_Li(const Interaction &ref, const Point2f &u,
     return L(pShape, -*wi);
 }
 
+// Pdf_Li：计算在光源上采样点的概率密度
 Float DiffuseAreaLight::Pdf_Li(const Interaction &ref,
                                const Vector3f &wi) const {
     ProfilePhase _(Prof::LightPdf);
     return shape->Pdf(ref, wi);
 }
 
+// Sample_Le：从光源发射一条光线（用于光子映射），采样位置和出射方向
 Spectrum DiffuseAreaLight::Sample_Le(const Point2f &u1, const Point2f &u2,
                                      Float time, Ray *ray, Normal3f *nLight,
                                      Float *pdfPos, Float *pdfDir) const {

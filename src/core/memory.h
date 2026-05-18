@@ -39,7 +39,8 @@
 #define PBRT_CORE_MEMORY_H
 
 // core/memory.h*
-#include "pbrt.h"
+// 内存管理工具：提供对齐内存分配(ArenaAlloc/FreeAligned)、
+// MemoryArena(高效临时内存池)和BlockedArray(分块存储数组)等
 #include <list>
 #include <cstddef>
 

@@ -32,19 +32,23 @@
 
 
 // textures/marble.cpp*
+// 文件功能：大理石纹理（MarbleTexture）的创建函数实现
 #include "textures/marble.h"
 
 namespace pbrt {
 
 // MarbleTexture Method Definitions
+// 创建浮点型大理石纹理：当前未实现，返回nullptr
 Texture<Float> *CreateMarbleFloatTexture(const Transform &tex2world,
                                          const TextureParams &tp) {
     return nullptr;
 }
 
+// 创建光谱型大理石纹理
 MarbleTexture *CreateMarbleSpectrumTexture(const Transform &tex2world,
                                            const TextureParams &tp) {
     // Initialize 3D texture mapping _map_ from _tp_
+    // 初始化3D纹理映射并读取参数：八度音阶数、粗糙度、缩放比例、变化幅度
     std::unique_ptr<TextureMapping3D> map(new IdentityMapping3D(tex2world));
     return new MarbleTexture(std::move(map), tp.FindInt("octaves", 8),
                              tp.FindFloat("roughness", .5f),

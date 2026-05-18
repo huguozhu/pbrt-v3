@@ -39,12 +39,16 @@
 #define PBRT_MATERIALS_GLASS_H
 
 // materials/glass.h*
+// 文件描述: 玻璃材质的头文件。实现了介电质表面的反射与透射，
+// 支持光滑和粗糙玻璃表面的BSDF建模。
 #include "pbrt.h"
 #include "material.h"
 
 namespace pbrt {
 
 // GlassMaterial Declarations
+// 玻璃材质类，支持反射(Kr)和透射(Kt)颜色控制，
+// 可配置表面粗糙度、折射率(index/eta)和凹凸贴图。
 class GlassMaterial : public Material {
   public:
     // GlassMaterial Public Methods
@@ -62,6 +66,7 @@ class GlassMaterial : public Material {
           index(index),
           bumpMap(bumpMap),
           remapRoughness(remapRoughness) {}
+    // 计算散射函数: 创建玻璃材质的BSDF(反射+透射)
     void ComputeScatteringFunctions(SurfaceInteraction *si, MemoryArena &arena,
                                     TransportMode mode,
                                     bool allowMultipleLobes) const;
@@ -75,6 +80,7 @@ class GlassMaterial : public Material {
     bool remapRoughness;
 };
 
+// 创建玻璃材质对象的工厂函数
 GlassMaterial *CreateGlassMaterial(const TextureParams &mp);
 
 }  // namespace pbrt

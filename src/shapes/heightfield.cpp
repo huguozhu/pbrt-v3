@@ -32,13 +32,19 @@
 
 
 // shapes/heightfield.cpp*
+/**
+ * @file heightfield.cpp
+ * @brief 高度场(Heightfield)几何体的实现
+ *
+ * 从高度图网格数据生成三角形网格地形，其中每个网格单元被分为两个三角形。
+ */
 #include "shapes/heightfield.h"
 #include "shapes/triangle.h"
 #include "paramset.h"
 
 namespace pbrt {
 
-// Heightfield Definitions
+// Heightfield Definitions / 高度场实现
 std::vector<std::shared_ptr<Shape>> CreateHeightfield(
     const Transform *ObjectToWorld, const Transform *WorldToObject,
     bool reverseOrientation, const ParamSet &params) {
@@ -54,7 +60,7 @@ std::vector<std::shared_ptr<Shape>> CreateHeightfield(
     std::unique_ptr<Point3f[]> P(new Point3f[nx * ny]);
     std::unique_ptr<Point2f[]> uvs(new Point2f[nx * ny]);
     int nverts = nx * ny;
-    // Compute heightfield vertex positions
+    // Compute heightfield vertex positions / 计算高度场顶点位置
     int pos = 0;
     for (int y = 0; y < ny; ++y) {
         for (int x = 0; x < nx; ++x) {
@@ -65,7 +71,7 @@ std::vector<std::shared_ptr<Shape>> CreateHeightfield(
         }
     }
 
-    // Fill in heightfield vertex offset array
+    // Fill in heightfield vertex offset array / 填充高度场顶点索引数组(生成三角形面片)
     int *vp = indices.get();
     for (int y = 0; y < ny - 1; ++y) {
         for (int x = 0; x < nx - 1; ++x) {

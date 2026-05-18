@@ -39,6 +39,8 @@
 #define PBRT_CORE_FLOATFILE_H
 
 // core/floatfile.h*
+// ReadFloatFile: 从文本文件中读取浮点数数组，
+// 用于加载透镜描述、光照分布等数据文件
 #include "pbrt.h"
 
 namespace pbrt {

@@ -39,6 +39,8 @@
 #define PBRT_MATERIALS_FOURIER_H
 
 // materials/fourier.h*
+// 文件描述: 傅里叶BSDF材质的头文件。基于测量的双向散射分布函数(BSDF)，
+// 使用傅里叶级数表示各向同性BSDF。支持从文件中加载预计算的BSDF数据。
 #include "pbrt.h"
 #include "material.h"
 #include "reflection.h"
@@ -48,11 +50,14 @@
 namespace pbrt {
 
 // FourierMaterial Declarations
+// 傅里叶材质类，从文件中加载使用傅里叶级数表示的BSDF数据。
+// 数据文件格式由Wenzel Jakob等人的论文定义。
 class FourierMaterial : public Material {
   public:
     // FourierMaterial Public Methods
     FourierMaterial(const std::string &filename,
                     const std::shared_ptr<Texture<Float>> &bump);
+    // 计算散射函数: 从BSDF表创建傅里叶BSDF
     void ComputeScatteringFunctions(SurfaceInteraction *si, MemoryArena &arena,
                                     TransportMode mode,
                                     bool allowMultipleLobes) const;
@@ -64,6 +69,7 @@ class FourierMaterial : public Material {
     static std::map<std::string, std::unique_ptr<FourierBSDFTable>> loadedBSDFs;
 };
 
+// 创建傅里叶材质对象的工厂函数
 FourierMaterial *CreateFourierMaterial(const TextureParams &mp);
 
 }  // namespace pbrt

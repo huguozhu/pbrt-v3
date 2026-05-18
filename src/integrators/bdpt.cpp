@@ -31,6 +31,8 @@
  */
 
 // integrators/bdpt.cpp*
+// BDPTIntegrator实现：双向路径追踪（Bidirectional Path Tracing），
+// 同时从相机和光源生成子路径，然后枚举所有(s,t)组合进行连接，使用MIS权重合并以减少方差
 #include "integrators/bdpt.h"
 #include "film.h"
 #include "filters/box.h"
@@ -52,6 +54,7 @@ int RandomWalk(const Scene &scene, RayDifferential ray, Sampler &sampler,
                TransportMode mode, Vertex *path);
 
 // BDPT Utility Functions
+// CorrectShadingNormal：校正BSDF的着色法线，确保能量守恒（Importance模式下需要处理法线修正）
 Float CorrectShadingNormal(const SurfaceInteraction &isect, const Vector3f &wo,
                            const Vector3f &wi, TransportMode mode) {
     if (mode == TransportMode::Importance) {
@@ -66,6 +69,7 @@ Float CorrectShadingNormal(const SurfaceInteraction &isect, const Vector3f &wo,
         return 1;
 }
 
+// GenerateCameraSubpath：从相机生成子路径，从相机采样初始光线并随机游走构建路径顶点
 int GenerateCameraSubpath(const Scene &scene, Sampler &sampler,
                           MemoryArena &arena, int maxDepth,
                           const Camera &camera, const Point2f &pFilm,
@@ -92,6 +96,7 @@ int GenerateCameraSubpath(const Scene &scene, Sampler &sampler,
            1;
 }
 
+// GenerateLightSubpath：从光源生成子路径，从光源采样初始光线并随机游走构建路径顶点
 int GenerateLightSubpath(
     const Scene &scene, Sampler &sampler, MemoryArena &arena, int maxDepth,
     Float time, const Distribution1D &lightDistr,
@@ -136,6 +141,7 @@ int GenerateLightSubpath(
     return nVertices + 1;
 }
 
+// RandomWalk：从给定光线开始随机游走，在场景中反弹生成路径顶点序列
 int RandomWalk(const Scene &scene, RayDifferential ray, Sampler &sampler,
                MemoryArena &arena, Spectrum beta, Float pdf, int maxDepth,
                TransportMode mode, Vertex *path) {
@@ -156,6 +162,7 @@ int RandomWalk(const Scene &scene, RayDifferential ray, Sampler &sampler,
         if (beta.IsBlack()) break;
         Vertex &vertex = path[bounces], &prev = path[bounces - 1];
         if (mi.IsValid()) {
+            // 如果存在介质交互，记录为介质顶点并采样相位函数方向
             // Record medium interaction in _path_ and compute forward density
             vertex = Vertex::CreateMedium(mi, beta, pdfFwd, prev);
             if (++bounces >= maxDepth) break;
@@ -165,7 +172,6 @@ int RandomWalk(const Scene &scene, RayDifferential ray, Sampler &sampler,
             pdfFwd = pdfRev = mi.phase->Sample_p(-ray.d, &wi, sampler.Get2D());
             ray = mi.SpawnRay(wi);
         } else {
-            // Handle surface interaction for path generation
             if (!foundIntersection) {
                 // Capture escaped rays when tracing from the camera
                 if (mode == TransportMode::Radiance) {
@@ -214,6 +220,7 @@ int RandomWalk(const Scene &scene, RayDifferential ray, Sampler &sampler,
     return bounces;
 }
 
+// G：计算两个顶点之间的几何因子（含可见性测试）
 Spectrum G(const Scene &scene, Sampler &sampler, const Vertex &v0,
            const Vertex &v1) {
     Vector3f d = v0.p() - v1.p();
@@ -225,6 +232,7 @@ Spectrum G(const Scene &scene, Sampler &sampler, const Vertex &v0,
     return g * vis.Tr(scene, sampler);
 }
 
+// MISWeight：计算多重重要性采样（MIS）权重，用于合并不同(s,t)连接策略的贡献
 Float MISWeight(const Scene &scene, Vertex *lightVertices,
                 Vertex *cameraVertices, Vertex &sampled, int s, int t,
                 const Distribution1D &lightPdf,
@@ -294,11 +302,13 @@ Float MISWeight(const Scene &scene, Vertex *lightVertices,
 }
 
 // BDPT Method Definitions
+// BufferIndex：将(s,t)策略索引映射到一维缓冲区
 inline int BufferIndex(int s, int t) {
     int above = s + t - 2;
     return s + above * (5 + above) / 2;
 }
 
+// BDPTIntegrator::Render：BDPT主渲染函数，将图像划分为tile并行渲染，每个像素枚举所有(s,t)连接
 void BDPTIntegrator::Render(const Scene &scene) {
     std::unique_ptr<LightDistribution> lightDistribution =
         CreateLightSampleDistribution(lightSampleStrategy, scene);
@@ -441,6 +451,7 @@ void BDPTIntegrator::Render(const Scene &scene) {
     }
 }
 
+// ConnectBDPT：执行(s,t)连接策略，计算相机子路径的前t个顶点和光源子路径的前s个顶点之间的贡献
 Spectrum ConnectBDPT(
     const Scene &scene, Vertex *lightVertices, Vertex *cameraVertices, int s,
     int t, const Distribution1D &lightDistr,
@@ -534,6 +545,7 @@ Spectrum ConnectBDPT(
     return L;
 }
 
+// CreateBDPTIntegrator：根据参数集创建BDPTIntegrator实例
 BDPTIntegrator *CreateBDPTIntegrator(const ParamSet &params,
                                      std::shared_ptr<Sampler> sampler,
                                      std::shared_ptr<const Camera> camera) {

@@ -39,6 +39,7 @@
 #define PBRT_TEXTURES_PTEX_H
 
 // textures/ptex.h*
+// 模块功能：Ptex纹理（PtexTexture），支持Ptex格式的纹理贴图（基于面的纹理映射）
 #include "pbrt.h"
 #include "texture.h"
 
@@ -47,6 +48,7 @@
 namespace pbrt {
 
 // PtexTexture Declarations
+// Ptex纹理类声明：使用Ptex库加载和采样Ptex格式纹理
 template <typename T>
 class PtexTexture : public Texture<T> {
   public:

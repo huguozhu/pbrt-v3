@@ -39,6 +39,14 @@
 #define PBRT_SHAPES_TRIANGLE_H
 
 // shapes/triangle.h*
+/**
+ * @file triangle.h
+ * @brief 三角形网格(Triangle)几何体模块
+ *
+ * 定义了三角形网格几何体，是pbrt中最常用的几何表示方式。
+ * 包括TriangleMesh(网格数据容器)和Triangle(单个三角形)。
+ * 支持法线、切线、UV坐标、Alpha纹理和阴影Alpha纹理。
+ */
 #include "shape.h"
 #include "stats.h"
 #include <map>
@@ -47,9 +55,14 @@ namespace pbrt {
 
 STAT_MEMORY_COUNTER("Memory/Triangle meshes", triMeshBytes);
 
-// Triangle Declarations
+// Triangle Declarations / 三角形声明
+
+/**
+ * @brief 三角形网格数据结构
+ * 存储顶点位置、法线、切线、UV坐标以及面索引等网格数据
+ */
 struct TriangleMesh {
-    // TriangleMesh Public Methods
+    // TriangleMesh Public Methods / 网格公有方法
     TriangleMesh(const Transform &ObjectToWorld, int nTriangles,
                  const int *vertexIndices, int nVertices, const Point3f *P,
                  const Vector3f *S, const Normal3f *N, const Point2f *uv,
@@ -57,20 +70,24 @@ struct TriangleMesh {
                  const std::shared_ptr<Texture<Float>> &shadowAlphaMask,
                  const int *faceIndices);
 
-    // TriangleMesh Data
-    const int nTriangles, nVertices;
-    std::vector<int> vertexIndices;
-    std::unique_ptr<Point3f[]> p;
-    std::unique_ptr<Normal3f[]> n;
-    std::unique_ptr<Vector3f[]> s;
-    std::unique_ptr<Point2f[]> uv;
-    std::shared_ptr<Texture<Float>> alphaMask, shadowAlphaMask;
-    std::vector<int> faceIndices;
+    // TriangleMesh Data / 网格数据
+    const int nTriangles, nVertices; /**< 三角形数量和顶点数量 */
+    std::vector<int> vertexIndices;  /**< 顶点索引数组 */
+    std::unique_ptr<Point3f[]> p;    /**< 顶点位置(世界空间) */
+    std::unique_ptr<Normal3f[]> n;   /**< 顶点法线(可选) */
+    std::unique_ptr<Vector3f[]> s;   /**< 顶点切线(可选) */
+    std::unique_ptr<Point2f[]> uv;   /**< 顶点UV坐标(可选) */
+    std::shared_ptr<Texture<Float>> alphaMask, shadowAlphaMask; /**< 透明度纹理 */
+    std::vector<int> faceIndices;    /**< 面片索引(可选) */
 };
 
+/**
+ * @brief 单个三角形
+ * 引用TriangleMesh中的数据，实现Shape接口。
+ */
 class Triangle : public Shape {
   public:
-    // Triangle Public Methods
+    // Triangle Public Methods / 三角形公有方法
     Triangle(const Transform *ObjectToWorld, const Transform *WorldToObject,
              bool reverseOrientation, const std::shared_ptr<TriangleMesh> &mesh,
              int triNumber)
@@ -86,15 +103,20 @@ class Triangle : public Shape {
     bool IntersectP(const Ray &ray, bool testAlphaTexture = true) const;
     Float Area() const;
 
-    using Shape::Sample;  // Bring in the other Sample() overload.
+    using Shape::Sample;  // Bring in the other Sample() overload. / 引入其它Sample重载版本
     Interaction Sample(const Point2f &u, Float *pdf) const;
 
-    // Returns the solid angle subtended by the triangle w.r.t. the given
-    // reference point p.
+    /**
+     * @brief 计算三角形相对于某点的立体角
+     * 使用Girard球面三角形面积定理计算
+     */
     Float SolidAngle(const Point3f &p, int nSamples = 0) const;
 
   private:
-    // Triangle Private Methods
+    // Triangle Private Methods / 三角形私有方法
+    /**
+     * @brief 获取三角形的UV坐标(无UV时使用默认值)
+     */
     void GetUVs(Point2f uv[3]) const {
         if (mesh->uv) {
             uv[0] = mesh->uv[v[0]];
@@ -107,10 +129,10 @@ class Triangle : public Shape {
         }
     }
 
-    // Triangle Private Data
-    std::shared_ptr<TriangleMesh> mesh;
-    const int *v;
-    int faceIndex;
+    // Triangle Private Data / 三角形私有数据
+    std::shared_ptr<TriangleMesh> mesh; /**< 所属三角形网格 */
+    const int *v;                       /**< 顶点索引指针 */
+    int faceIndex;                      /**< 面片索引 */
 };
 
 std::vector<std::shared_ptr<Shape>> CreateTriangleMesh(

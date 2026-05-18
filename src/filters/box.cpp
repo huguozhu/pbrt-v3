@@ -32,14 +32,17 @@
 
 
 // filters/box.cpp*
+// 盒状滤波器实现：在滤波器范围内的所有像素权重均为1.0
 #include "filters/box.h"
 #include "paramset.h"
 
 namespace pbrt {
 
 // Box Filter Method Definitions
+// Evaluate: 返回盒状滤波器的权重值，恒为1.0（完全在滤波器范围内）
 Float BoxFilter::Evaluate(const Point2f &p) const { return 1.; }
 
+// CreateBoxFilter: 根据参数集创建盒状滤波器，从参数中读取xwidth和ywidth
 BoxFilter *CreateBoxFilter(const ParamSet &ps) {
     Float xw = ps.FindOneFloat("xwidth", 0.5f);
     Float yw = ps.FindOneFloat("ywidth", 0.5f);

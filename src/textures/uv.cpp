@@ -32,16 +32,19 @@
 
 
 // textures/uv.cpp*
+// 文件功能：UV纹理（UVTexture）的创建函数实现
 #include "textures/uv.h"
 
 namespace pbrt {
 
 // UVTexture Method Definitions
+// 创建浮点型UV纹理：当前未实现，返回nullptr
 Texture<Float> *CreateUVFloatTexture(const Transform &tex2world,
                                      const TextureParams &tp) {
     return nullptr;
 }
 
+// 创建光谱型UV纹理：将纹理坐标映射为RGB颜色
 UVTexture *CreateUVSpectrumTexture(const Transform &tex2world,
                                    const TextureParams &tp) {
     // Initialize 2D texture mapping _map_ from _tp_

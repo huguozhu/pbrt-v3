@@ -32,6 +32,8 @@
 
 
 // materials/subsurface.cpp*
+// 文件描述: 次表面散射材质的实现。基于BSSRDF的次表面散射模型，
+// 支持介电质BSDF(反射+透射)和基于表格的BSSRDF。
 #include "materials/subsurface.h"
 #include "textures/constant.h"
 #include "spectrum.h"
@@ -43,24 +45,26 @@
 namespace pbrt {
 
 // SubsurfaceMaterial Method Definitions
+// 计算散射函数: 创建介电质BSDF和TabulatedBSSRDF
 void SubsurfaceMaterial::ComputeScatteringFunctions(
     SurfaceInteraction *si, MemoryArena &arena, TransportMode mode,
     bool allowMultipleLobes) const {
-    // Perform bump mapping with _bumpMap_, if present
+    // 如果存在凹凸贴图则执行凹凸映射
     if (bumpMap) Bump(bumpMap, si);
 
-    // Initialize BSDF for _SubsurfaceMaterial_
+    // 初始化次表面散射材质的BSDF
     Spectrum R = Kr->Evaluate(*si).Clamp();
     Spectrum T = Kt->Evaluate(*si).Clamp();
     Float urough = uRoughness->Evaluate(*si);
     Float vrough = vRoughness->Evaluate(*si);
 
-    // Initialize _bsdf_ for smooth or rough dielectric
+    // 初始化光滑或粗糙介电质的BSDF
     si->bsdf = ARENA_ALLOC(arena, BSDF)(*si, eta);
 
     if (R.IsBlack() && T.IsBlack()) return;
 
     bool isSpecular = urough == 0 && vrough == 0;
+    // 光滑表面使用FresnelSpecular，粗糙表面使用微表面模型
     if (isSpecular && allowMultipleLobes) {
         si->bsdf->Add(
             ARENA_ALLOC(arena, FresnelSpecular)(R, T, 1.f, eta, mode));
@@ -93,10 +97,12 @@ void SubsurfaceMaterial::ComputeScatteringFunctions(
     }
     Spectrum sig_a = scale * sigma_a->Evaluate(*si).Clamp();
     Spectrum sig_s = scale * sigma_s->Evaluate(*si).Clamp();
+    // 创建TabulatedBSSRDF用于次表面散射
     si->bssrdf = ARENA_ALLOC(arena, TabulatedBSSRDF)(*si, this, mode, eta,
                                                      sig_a, sig_s, table);
 }
 
+// 创建次表面散射材质对象的工厂函数
 SubsurfaceMaterial *CreateSubsurfaceMaterial(const TextureParams &mp) {
     Float sig_a_rgb[3] = {.0011f, .0024f, .014f},
           sig_s_rgb[3] = {2.55f, 3.21f, 3.77f};

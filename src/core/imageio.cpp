@@ -31,6 +31,15 @@
  */
 
 // core/imageio.cpp*
+//
+// 本模块提供了图像文件的读写功能，支持以下格式：
+// - EXR (OpenEXR): 高动态范围图像格式
+// - TGA (Truevision Targa): 8 位真彩色图像格式
+// - PNG (Portable Network Graphics): 8 位真彩色图像格式
+// - PFM (Portable Float Map): 浮点像素格式
+// ReadImage 根据文件扩展名自动选择合适的读取器，
+// WriteImage 根据文件扩展名自动选择合适的写入器。
+//
 #include "imageio.h"
 #include "ext/lodepng.h"
 #include "ext/targa.h"
@@ -57,6 +66,11 @@ static RGBSpectrum *ReadImagePFM(const std::string &filename, int *xres,
                                  int *yres);
 
 // ImageIO Function Definitions
+
+// ReadImage: 根据文件名后缀自动选择合适的格式读取图像
+// name - 图像文件路径，支持 .exr/.tga/.png/.pfm 格式
+// resolution - 输出参数，返回图像的分辨率（宽度 x 高度）
+// 返回值：包含图像像素数据的 RGBSpectrum 数组，失败时返回 nullptr
 std::unique_ptr<RGBSpectrum[]> ReadImage(const std::string &name,
                                          Point2i *resolution) {
     if (HasExtension(name, ".exr"))
@@ -78,6 +92,11 @@ std::unique_ptr<RGBSpectrum[]> ReadImage(const std::string &name,
     return nullptr;
 }
 
+// WriteImage: 根据文件名后缀自动选择合适的格式写入图像
+// name - 输出图像文件路径，支持 .exr/.pfm/.tga/.png 格式
+// rgb - RGB 浮点像素数据（每像素三个 Float 值）
+// outputBounds - 输出图像在当前平铺区域中的边界
+// totalResolution - 完整图像的总分辨率
 void WriteImage(const std::string &name, const Float *rgb,
                 const Bounds2i &outputBounds, const Point2i &totalResolution) {
     Vector2i resolution = outputBounds.Diagonal();
@@ -121,6 +140,12 @@ void WriteImage(const std::string &name, const Float *rgb,
     }
 }
 
+// ReadImageEXR: 读取 OpenEXR 格式的高动态范围图像
+// name - EXR 文件路径
+// width, height - 输出参数，返回图像尺寸
+// dataWindow - 输出参数，返回像素数据窗口（pbrt 使用的非包含性边界约定）
+// displayWindow - 输出参数，返回显示窗口
+// 返回值：RGBSpectrum 像素数组，失败时返回 NULL
 RGBSpectrum *ReadImageEXR(const std::string &name, int *width, int *height,
                           Bounds2i *dataWindow, Bounds2i *displayWindow) {
     using namespace Imf;
@@ -131,6 +156,7 @@ RGBSpectrum *ReadImageEXR(const std::string &name, int *width, int *height,
 
         // OpenEXR uses inclusive pixel bounds; adjust to non-inclusive
         // (the convention pbrt uses) in the values returned.
+        // OpenEXR 使用包含性像素边界；调整为 pbrt 使用的非包含性约定
         if (dataWindow)
             *dataWindow = {{dw.min.x, dw.min.y}, {dw.max.x + 1, dw.max.y + 1}};
         if (displayWindow) {
@@ -141,11 +167,13 @@ RGBSpectrum *ReadImageEXR(const std::string &name, int *width, int *height,
         *width = dw.max.x - dw.min.x + 1;
         *height = dw.max.y - dw.min.y + 1;
 
+        // 分配像素缓冲区并读取图像数据
         std::vector<Rgba> pixels(*width * *height);
         file.setFrameBuffer(&pixels[0] - dw.min.x - dw.min.y * *width, 1,
                             *width);
         file.readPixels(dw.min.y, dw.max.y);
 
+        // 将 OpenEXR 的 RGBA 像素转换为 pbrt 的 RGBSpectrum
         RGBSpectrum *ret = new RGBSpectrum[*width * *height];
         for (int i = 0; i < *width * *height; ++i) {
             Float frgb[3] = {pixels[i].r, pixels[i].g, pixels[i].b};
@@ -161,12 +189,19 @@ RGBSpectrum *ReadImageEXR(const std::string &name, int *width, int *height,
     return NULL;
 }
 
+// WriteImageEXR: 以 OpenEXR 格式写入图像数据（内部静态函数）
+// name - 输出文件名
+// pixels - RGB 浮点像素数据
+// xRes, yRes - 当前写入区域的尺寸
+// totalXRes, totalYRes - 完整图像的尺寸
+// xOffset, yOffset - 当前区域在完整图像中的偏移量
 static void WriteImageEXR(const std::string &name, const Float *pixels,
                           int xRes, int yRes, int totalXRes, int totalYRes,
                           int xOffset, int yOffset) {
     using namespace Imf;
     using namespace Imath;
 
+    // 将 Float 像素数据转换为 OpenEXR 的 Rgba 格式
     Rgba *hrgba = new Rgba[xRes * yRes];
     for (int i = 0; i < xRes * yRes; ++i)
         hrgba[i] = Rgba(pixels[3 * i], pixels[3 * i + 1], pixels[3 * i + 2]);
@@ -189,10 +224,14 @@ static void WriteImageEXR(const std::string &name, const Float *pixels,
 }
 
 // TGA Function Definitions
+
+// WriteImageTGA: 以 TGA 格式写入图像数据
+// TGA 格式使用 BGR 像素排列，需要将 RGB 数据重新排列为 BGR
 void WriteImageTGA(const std::string &name, const uint8_t *pixels, int xRes,
                    int yRes, int totalXRes, int totalYRes, int xOffset,
                    int yOffset) {
     // Reformat to BGR layout.
+    // 将 RGB 重新排列为 TGA 所需的 BGR 格式
     std::unique_ptr<uint8_t[]> outBuf(new uint8_t[3 * xRes * yRes]);
     uint8_t *dst = outBuf.get();
     const uint8_t *src = pixels;
@@ -206,6 +245,7 @@ void WriteImageTGA(const std::string &name, const uint8_t *pixels, int xRes,
         }
     }
 
+    // 调用 targa 库写入 BGR 格式的 TGA 文件
     tga_result result;
     if ((result = tga_write_bgr(name.c_str(), outBuf.get(), xRes, yRes, 24)) !=
         TGA_NOERR)
@@ -213,6 +253,10 @@ void WriteImageTGA(const std::string &name, const uint8_t *pixels, int xRes,
               name.c_str(), tga_error(result));
 }
 
+// ReadImageTGA: 读取 TGA 格式图像文件
+// name - TGA 文件路径
+// width, height - 输出参数，返回图像尺寸
+// 返回值：RGBSpectrum 像素数组，失败时返回 nullptr
 static RGBSpectrum *ReadImageTGA(const std::string &name, int *width,
                                  int *height) {
     tga_image img;
@@ -223,6 +267,7 @@ static RGBSpectrum *ReadImageTGA(const std::string &name, int *width,
         return nullptr;
     }
 
+    // 标准化图像方向：统一转为从左到右、从上到下的布局
     if (tga_is_right_to_left(&img)) tga_flip_horiz(&img);
     if (!tga_is_top_to_bottom(&img)) tga_flip_vert(&img);
     if (tga_is_colormapped(&img)) tga_color_unmap(&img);
@@ -232,6 +277,7 @@ static RGBSpectrum *ReadImageTGA(const std::string &name, int *width,
 
     // "Unpack" the pixels (origin in the lower left corner).
     // TGA pixels are in BGRA format.
+    // 解包像素（原点在左下角），TGA 像素为 BGRA 格式
     RGBSpectrum *ret = new RGBSpectrum[*width * *height];
     RGBSpectrum *dst = ret;
     for (int y = 0; y < *height; y++)
@@ -240,6 +286,7 @@ static RGBSpectrum *ReadImageTGA(const std::string &name, int *width,
             if (tga_is_mono(&img))
                 *dst++ = RGBSpectrum(*src / 255.f);
             else {
+                // TGA 是 BGR 格式，转换到 RGB
                 Float c[3];
                 c[2] = src[0] / 255.f;
                 c[1] = src[1] / 255.f;
@@ -255,6 +302,8 @@ static RGBSpectrum *ReadImageTGA(const std::string &name, int *width,
     return ret;
 }
 
+// ReadImagePNG: 读取 PNG 格式图像文件
+// 使用 lodepng 库解码 PNG 文件为 24 位 RGB 数据，然后转换为 RGBSpectrum
 static RGBSpectrum *ReadImagePNG(const std::string &name, int *width,
                                  int *height) {
     unsigned char *rgb;
@@ -268,6 +317,7 @@ static RGBSpectrum *ReadImagePNG(const std::string &name, int *width,
     *width = w;
     *height = h;
 
+    // 将 8 位 RGB 数据转换为 pbrt 的 RGBSpectrum 格式
     RGBSpectrum *ret = new RGBSpectrum[*width * *height];
     unsigned char *src = rgb;
     for (unsigned int y = 0; y < h; ++y) {
@@ -317,14 +367,14 @@ static PBRT_CONSTEXPR bool hostLittleEndian =
 
 #define BUFFER_SIZE 80
 
+// isWhitespace: 判断字符是否为空白字符（空格、换行、制表符）
 static inline int isWhitespace(char c) {
     return c == ' ' || c == '\n' || c == '\t';
 }
 
-// Reads a "word" from the fp and puts it into buffer and adds a null
-// terminator.  i.e. it keeps reading until whitespace is reached.  Returns
-// the number of characters read *not* including the whitespace, and
-// returns -1 on an error.
+// readWord: 从文件中读取一个"单词"，即连续的非空白字符序列
+// 将读取的字符存入 buffer 并添加 null 终止符。
+// 返回读取的字符数（不含终止符和尾随空白），出错时返回 -1
 static int readWord(FILE *fp, char *buffer, int bufferLength) {
     int n;
     int c;
@@ -347,6 +397,8 @@ static int readWord(FILE *fp, char *buffer, int bufferLength) {
     return -1;
 }
 
+// ReadImagePFM: 读取 PFM（Portable Float Map）格式图像文件
+// 支持单通道（Pf）和三通道（PF）格式，自动处理字节序和缩放因子
 static RGBSpectrum *ReadImagePFM(const std::string &filename, int *xres,
                                  int *yres) {
     float *data = nullptr;
@@ -434,6 +486,8 @@ fail:
     return nullptr;
 }
 
+// WriteImagePFM: 以 PFM 格式写入三通道（PF）浮点图像
+// PFM 格式将像素从底部左到顶部右逐行存储，使用 32 位浮点数
 static bool WriteImagePFM(const std::string &filename, const Float *rgb,
                           int width, int height) {
     FILE *fp;
@@ -448,12 +502,15 @@ static bool WriteImagePFM(const std::string &filename, const Float *rgb,
     std::unique_ptr<float[]> scanline(new float[3 * width]);
 
     // only write 3 channel PFMs here...
+    // 仅写入三通道 PFM 格式（标记为 "PF"）
     if (fprintf(fp, "PF\n") < 0) goto fail;
 
     // write the width and height, which must be positive
+    // 写入宽度和高度
     if (fprintf(fp, "%d %d\n", width, height) < 0) goto fail;
 
     // write the scale, which encodes endianness
+    // 写入缩放因子，其正负号编码了字节序（负值表示小端）
     scale = hostLittleEndian ? -1.f : 1.f;
     if (fprintf(fp, "%f\n", scale) < 0) goto fail;
 
@@ -462,9 +519,11 @@ static bool WriteImagePFM(const std::string &filename, const Float *rgb,
     // The raster is a sequence of pixels, packed one after another, with no
     // delimiters of any kind. They are grouped by row, with the pixels in each
     // row ordered left to right and the rows ordered bottom to top.
+    // 按 PFM 规范从下到上写入行数据
     for (int y = height - 1; y >= 0; y--) {
         // in case Float is 'double', copy into a staging buffer that's
         // definitely a 32-bit float...
+        // 如果 Float 是 double 类型，先复制到 32 位 float 缓冲区
         for (int x = 0; x < 3 * width; ++x)
             scanline[x] = rgb[y * width * 3 + x];
         if (fwrite(&scanline[0], sizeof(float), width * 3, fp) <

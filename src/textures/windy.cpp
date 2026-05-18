@@ -32,11 +32,13 @@
 
 
 // textures/windy.cpp*
+// 文件功能：风吹纹理（WindyTexture）的创建函数实现
 #include "textures/windy.h"
 
 namespace pbrt {
 
 // WindyTexture Method Definitions
+// 创建浮点型风吹纹理：使用3D恒等映射
 WindyTexture<Float> *CreateWindyFloatTexture(const Transform &tex2world,
                                              const TextureParams &tp) {
     // Initialize 3D texture mapping _map_ from _tp_
@@ -44,6 +46,7 @@ WindyTexture<Float> *CreateWindyFloatTexture(const Transform &tex2world,
     return new WindyTexture<Float>(std::move(map));
 }
 
+// 创建光谱型风吹纹理
 WindyTexture<Spectrum> *CreateWindySpectrumTexture(const Transform &tex2world,
                                                    const TextureParams &tp) {
     // Initialize 3D texture mapping _map_ from _tp_

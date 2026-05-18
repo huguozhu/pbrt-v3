@@ -31,6 +31,8 @@
  */
 
 // cameras/realistic.cpp*
+// 真实相机模型实现：使用多片透镜组模拟物理相机的光学系统，
+// 支持光线追踪通过透镜组、出射光瞳计算和自动对焦
 #include "cameras/realistic.h"
 #include "paramset.h"
 #include "sampler.h"
@@ -47,6 +49,7 @@ namespace pbrt {
 STAT_PERCENT("Camera/Rays vignetted by lens system", vignettedRays, totalRays);
 
 // RealisticCamera Method Definitions
+// RealisticCamera构造函数：初始化透镜组数据，计算对焦距离和出射光瞳边界
 RealisticCamera::RealisticCamera(const AnimatedTransform &CameraToWorld,
                                  Float shutterOpen, Float shutterClose,
                                  Float apertureDiameter, Float focusDistance,
@@ -97,6 +100,7 @@ RealisticCamera::RealisticCamera(const AnimatedTransform &CameraToWorld,
                 "https://github.com/mmp/pbrt-v3/issues/162#issuecomment-348625837");
 }
 
+// TraceLensesFromFilm: 从胶片端向场景端追踪光线通过整个透镜系统
 bool RealisticCamera::TraceLensesFromFilm(const Ray &rCamera, Ray *rOut) const {
     Float elementZ = 0;
     // Transform _rCamera_ from camera to lens system space
@@ -150,6 +154,7 @@ bool RealisticCamera::TraceLensesFromFilm(const Ray &rCamera, Ray *rOut) const {
     return true;
 }
 
+// IntersectSphericalElement: 计算光线与球面透镜元件的交点和法线
 bool RealisticCamera::IntersectSphericalElement(Float radius, Float zCenter,
                                                 const Ray &ray, Float *t,
                                                 Normal3f *n) {
@@ -172,6 +177,7 @@ bool RealisticCamera::IntersectSphericalElement(Float radius, Float zCenter,
     return true;
 }
 
+// TraceLensesFromScene: 从场景端向胶片端追踪光线通过整个透镜系统
 bool RealisticCamera::TraceLensesFromScene(const Ray &rCamera,
                                            Ray *rOut) const {
     Float elementZ = -LensFrontZ();
@@ -676,6 +682,7 @@ void RealisticCamera::TestExitPupilBounds() const {
     fprintf(stderr, ".");
 }
 
+// GenerateRay: 真实相机的光线生成函数，从胶片采样点追踪光线通过透镜系统
 Float RealisticCamera::GenerateRay(const CameraSample &sample, Ray *ray) const {
     ProfilePhase prof(Prof::GenerateCameraRay);
     ++totalRays;
@@ -711,6 +718,7 @@ Float RealisticCamera::GenerateRay(const CameraSample &sample, Ray *ray) const {
                (cos4Theta * exitPupilBoundsArea) / (LensRearZ() * LensRearZ());
 }
 
+// CreateRealisticCamera: 工厂函数，从透镜描述文件和参数集中创建真实相机
 RealisticCamera *CreateRealisticCamera(const ParamSet &params,
                                        const AnimatedTransform &cam2world,
                                        Film *film, const Medium *medium) {

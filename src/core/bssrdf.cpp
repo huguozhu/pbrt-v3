@@ -32,6 +32,13 @@
 
 
 // core/bssrdf.cpp*
+//
+// 此文件实现了次表面散射（BSSRDF）相关的核心功能。
+// BSSRDF（Bidirectional Surface Scattering Reflectance Distribution Function）
+// 描述了光在介质表面下进行次表面散射后重新从表面射出的过程。
+// 包含菲涅尔矩计算、光束扩散 BSSRDF 计算、以及查表 BSSRDF 的采样与求值。
+//
+
 #include "bssrdf.h"
 #include "interpolation.h"
 #include "parallel.h"
@@ -40,6 +47,9 @@
 namespace pbrt {
 
 // BSSRDF Utility Functions
+
+// 计算菲涅尔一阶矩 FresnelMoment1(eta)。
+// 根据折射率 eta 是否小于 1 选择不同的多项式拟合系数。
 Float FresnelMoment1(Float eta) {
     Float eta2 = eta * eta, eta3 = eta2 * eta, eta4 = eta3 * eta,
           eta5 = eta4 * eta;
@@ -51,6 +61,8 @@ Float FresnelMoment1(Float eta) {
                1.27198f * eta4 + 0.12746f * eta5;
 }
 
+// 计算菲涅尔二阶矩 FresnelMoment2(eta)。
+// 与一阶矩类似，根据 eta < 1 或 eta >= 1 使用不同的多项式拟合公式。
 Float FresnelMoment2(Float eta) {
     Float eta2 = eta * eta, eta3 = eta2 * eta, eta4 = eta3 * eta,
           eta5 = eta4 * eta;
@@ -65,6 +77,10 @@ Float FresnelMoment2(Float eta) {
     }
 }
 
+// 使用偶极子近似（dipole approximation）计算多重散射 BSSRDF 扩散剖面。
+// 通过对点光源深度进行蒙特卡洛采样，累加偶极子辐射度和矢量辐照度贡献。
+// sigma_s: 散射系数, sigma_a: 吸收系数, g: 各向异性参数,
+// eta: 相对折射率, r: 表面距离。
 Float BeamDiffusionMS(Float sigma_s, Float sigma_a, Float g, Float eta,
                       Float r) {
     const int nSamples = 100;
@@ -119,6 +135,8 @@ Float BeamDiffusionMS(Float sigma_s, Float sigma_a, Float g, Float eta,
     return Ed / nSamples;
 }
 
+// 计算单次散射 BSSRDF 扩散剖面。
+// 对临界角以下的深度进行采样，累加单次散射对出射辐射度的贡献。
 Float BeamDiffusionSS(Float sigma_s, Float sigma_a, Float g, Float eta,
                       Float r) {
     // Compute material parameters and minimum $t$ below the critical angle
@@ -142,6 +160,8 @@ Float BeamDiffusionSS(Float sigma_s, Float sigma_a, Float g, Float eta,
     return Ess / nSamples;
 }
 
+// 计算光束扩散 BSSRDF 表。预处理不同半径和反照率下的扩散剖面值，
+// 并计算有效反照率和累积分布函数（CDF）用于重要性采样。
 void ComputeBeamDiffusionBSSRDF(Float g, Float eta, BSSRDFTable *t) {
     // Choose radius values of the diffusion profile discretization
     t->radiusSamples[0] = 0;
@@ -174,6 +194,8 @@ void ComputeBeamDiffusionBSSRDF(Float g, Float eta, BSSRDFTable *t) {
     }, t->nRhoSamples);
 }
 
+// 根据有效反照率 rhoEff 和平均自由程 mfp，反推吸收系数 sigma_a 和散射系数 sigma_s。
+// 通过 Catmull-Rom 插值反函数将漫反射参数转换为次表面散射参数。
 void SubsurfaceFromDiffuse(const BSSRDFTable &t, const Spectrum &rhoEff,
                            const Spectrum &mfp, Spectrum *sigma_a,
                            Spectrum *sigma_s) {
@@ -186,6 +208,9 @@ void SubsurfaceFromDiffuse(const BSSRDFTable &t, const Spectrum &rhoEff,
 }
 
 // BSSRDF Method Definitions
+
+// BSSRDFTable 构造函数。分配用于存储反照率样本、半径样本、
+// 扩散剖面、有效反照率和剖面 CDF 的数组内存。
 BSSRDFTable::BSSRDFTable(int nRhoSamples, int nRadiusSamples)
     : nRhoSamples(nRhoSamples),
       nRadiusSamples(nRadiusSamples),
@@ -195,6 +220,9 @@ BSSRDFTable::BSSRDFTable(int nRhoSamples, int nRadiusSamples)
       rhoEff(new Float[nRhoSamples]),
       profileCDF(new Float[nRadiusSamples * nRhoSamples]) {}
 
+// 计算查表 BSSRDF 在表面距离 r 处的值 Sr。
+// 将距离转换为光学半径，通过 Catmull-Rom 张量样条插值从表中获取扩散剖面值，
+// 然后变换回世界空间单位。
 Spectrum TabulatedBSSRDF::Sr(Float r) const {
     Spectrum Sr(0.f);
     for (int ch = 0; ch < Spectrum::nSamples; ++ch) {
@@ -230,6 +258,8 @@ Spectrum TabulatedBSSRDF::Sr(Float r) const {
     return Sr.Clamp();
 }
 
+// 对可分离 BSSRDF 进行采样：先采样空间项 Sp，然后在采样点处初始化 BSDF，
+// 使得后续可以在该点进行完整的着色计算。
 Spectrum SeparableBSSRDF::Sample_S(const Scene &scene, Float u1,
                                    const Point2f &u2, MemoryArena &arena,
                                    SurfaceInteraction *si, Float *pdf) const {
@@ -244,6 +274,9 @@ Spectrum SeparableBSSRDF::Sample_S(const Scene &scene, Float u1,
     return Sp;
 }
 
+// 对可分离 BSSRDF 的空间项 Sp 进行采样。
+// 随机选择一个投影轴，选择光谱通道，在极坐标下对 BSSRDF 剖面进行采样，
+// 然后沿光线与场景求交，随机选择一个交点作为采样结果。
 Spectrum SeparableBSSRDF::Sample_Sp(const Scene &scene, Float u1,
                                     const Point2f &u2, MemoryArena &arena,
                                     SurfaceInteraction *pi, Float *pdf) const {
@@ -328,6 +361,9 @@ Spectrum SeparableBSSRDF::Sample_Sp(const Scene &scene, Float u1,
     return this->Sp(*pi);
 }
 
+// 计算空间项 Sp 的采样概率密度函数（PDF）。
+// 将采样点坐标转换到局部坐标系，计算三个投影轴上的剖面半径，
+// 累加所有轴和光谱通道的概率密度。
 Float SeparableBSSRDF::Pdf_Sp(const SurfaceInteraction &pi) const {
     // Express $\pti-\pto$ and $\bold{n}_i$ with respect to local coordinates at
     // $\pto$
@@ -350,6 +386,9 @@ Float SeparableBSSRDF::Pdf_Sp(const SurfaceInteraction &pi) const {
     return pdf;
 }
 
+// 对查表 BSSRDF 的径向剖面进行采样。
+// 使用 Catmull-Rom 二维采样从预计算表中采样半径值，并转换回世界空间单位。
+// 返回 -1 表示采样失败。
 Float TabulatedBSSRDF::Sample_Sr(int ch, Float u) const {
     if (sigma_t[ch] == 0) return -1;
     return SampleCatmullRom2D(table.nRhoSamples, table.nRadiusSamples,
@@ -359,6 +398,8 @@ Float TabulatedBSSRDF::Sample_Sr(int ch, Float u) const {
            sigma_t[ch];
 }
 
+// 计算查表 BSSRDF 径向剖面在半径 r 处的概率密度。
+// 使用 Catmull-Rom 样条插值从表中获取剖面值，再除以其有效反照率进行归一化。
 Float TabulatedBSSRDF::Pdf_Sr(int ch, Float r) const {
     // Convert $r$ into unitless optical radius $r_{\roman{optical}}$
     Float rOptical = r * sigma_t[ch];

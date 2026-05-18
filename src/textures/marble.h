@@ -39,6 +39,7 @@
 #define PBRT_TEXTURES_MARBLE_H
 
 // textures/marble.h*
+// 模块功能：大理石纹理（MarbleTexture），使用分形噪声和正弦函数生成逼真的大理石花纹
 #include "pbrt.h"
 #include "texture.h"
 #include "paramset.h"
@@ -46,6 +47,7 @@
 namespace pbrt {
 
 // MarbleTexture Declarations
+// 大理石纹理类声明：使用分形布朗运动和正弦函数模拟大理石纹路，通过Bezier样条插值颜色
 class MarbleTexture : public Texture<Spectrum> {
   public:
     // MarbleTexture Public Methods

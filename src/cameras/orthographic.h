@@ -39,6 +39,8 @@
 #define PBRT_CAMERAS_ORTHOGRAPHIC_H
 
 // cameras/orthographic.h*
+// OrthographicCamera: 正交相机，所有光线平行发射，无透视效果，
+// 常用于技术制图和正交投影渲染
 #include "pbrt.h"
 #include "camera.h"
 #include "film.h"
@@ -49,6 +51,7 @@ namespace pbrt {
 class OrthographicCamera : public ProjectiveCamera {
   public:
     // OrthographicCamera Public Methods
+    // 构造函数：设置正交投影矩阵，计算像素在相机空间中的微分偏移
     OrthographicCamera(const AnimatedTransform &CameraToWorld,
                        const Bounds2f &screenWindow, Float shutterOpen,
                        Float shutterClose, Float lensRadius,
@@ -57,16 +60,19 @@ class OrthographicCamera : public ProjectiveCamera {
                            shutterOpen, shutterClose, lensRadius, focalDistance,
                            film, medium) {
         // Compute differential changes in origin for orthographic camera rays
+        // 计算相邻像素在相机空间中光线起点的偏移量（用于抗锯齿和景深）
         dxCamera = RasterToCamera(Vector3f(1, 0, 0));
         dyCamera = RasterToCamera(Vector3f(0, 1, 0));
     }
+    // GenerateRay: 从正交相机生成一条光线（所有光线方向相同）
     Float GenerateRay(const CameraSample &sample, Ray *) const;
+    // GenerateRayDifferential: 生成包含微分信息的光线，用于纹理滤波
     Float GenerateRayDifferential(const CameraSample &sample,
                                   RayDifferential *) const;
 
   private:
     // OrthographicCamera Private Data
-    Vector3f dxCamera, dyCamera;
+    Vector3f dxCamera, dyCamera;  // 相邻像素在相机空间的光线原点微分偏移
 };
 
 OrthographicCamera *CreateOrthographicCamera(const ParamSet &params,

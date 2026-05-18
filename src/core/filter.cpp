@@ -32,11 +32,19 @@
 
 
 // core/filter.cpp*
+//
+// 此文件实现了滤波器（Filter）的基类。
+// 滤波器用于图像重构，通过对像素邻域内的样本进行加权平均来生成最终图像。
+// pbrt 支持多种滤波器类型，包括 Box、Gaussian、Mitchell、Sinc 和 Triangle 滤波器。
+//
+
 #include "filter.h"
 
 namespace pbrt {
 
 // Filter Method Definitions
+
+// Filter 析构函数 —— 默认虚析构，确保派生类正确释放资源。
 Filter::~Filter() {}
 
 }  // namespace pbrt
